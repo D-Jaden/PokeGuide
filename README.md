@@ -1,2 +1,2 @@
-# Pok-Guide
+# PokéGuide
 A Faster Version Of the Pokédex
