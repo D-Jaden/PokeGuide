@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pokédex</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header>
+        <h1>Pokédex</h1>
+    </header>
+    <div class="container">
+        <input type="text" id="searchInput" placeholder="Search Pokémon">
+        <div class="pokedex">
+            <div class="pokemon-list" id="pokemonList"></div>
+        </div>
+    </div>
+    <!-- Modal for Pokémon details -->
+    <div class="modal" id="pokemonModal">
+        <div class="modal-content" id="modalContent">
+            <span class="close-btn" id="closeModal">&times;</span>
+            <div class="modal-container">
+                <div class="modal-details">
+                    <h2>Charizard #6</h2>
+                    <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/6.png" alt="Charizard">
+                    <p><strong>Type:</strong> fire, flying</p>
+                    <p><strong>Height:</strong> 1.7 m</p>
+                    <p><strong>Weight:</strong> 90.5 kg</p>
+                    <div class="modal-tabs">
+                        <div class="tab active" data-tab="stats">Stats</div>
+                        <div class="tab" data-tab="moves">Moves</div>
+                        <div class="tab" data-tab="evolutions">Evolutions</div>
+                    </div>
+                </div>
+                <div class="modal-stats active" id="stats">
+                    <h3>Stats</h3>
+                    <div class="stats-item"><p>Hp: 78</p><div class="stats-bar"><div class="stats-fill hp" style="width: 30.6%"></div></div></div>
+                    <div class="stats-item"><p>Attack: 84</p><div class="stats-bar"><div class="stats-fill attack" style="width: 32.9%"></div></div></div>
+                    <div class="stats-item"><p>Defense: 78</p><div class="stats-bar"><div class="stats-fill defense" style="width: 30.6%"></div></div></div>
+                    <div class="stats-item"><p>Special-attack: 109</p><div class="stats-bar"><div class="stats-fill special-attack" style="width: 42.7%"></div></div></div>
+                    <div class="stats-item"><p>Special-defense: 85</p><div class="stats-bar"><div class="stats-fill special-defense" style="width: 33.3%"></div></div></div>
+                    <div class="stats-item"><p>Speed: 100</p><div class="stats-bar"><div class="stats-fill speed" style="width: 39.2%"></div></div></div>
+                </div>
+                <div class="modal-stats" id="moves">
+                    <h3>Moves</h3>
+                    <p>Move 1</p>
+                    <p>Move 2</p>
+                </div>
+                <div class="modal-stats" id="evolutions">
+                    <h3>Evolutions</h3>
+                    <p>Charmander</p>
+                    <p>Charmeleon</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
