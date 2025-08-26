@@ -12,7 +12,5 @@
 - So I Created something faster
 - Made Using html,css and javascript
 - Feel Free To Customize and make Your Own Changes
-## OUTPUT
 
-![Alt text](Screenshot from 2025-08-24 11-10-04.png)
 
