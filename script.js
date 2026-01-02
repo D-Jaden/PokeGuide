@@ -1,6 +1,6 @@
 // Cache to store Pokémon details
-const pokemonListCache = new Map(); // For list view (name, sprite, type)
-const pokemonFullCache = new Map(); // For modal (full details)
+const pokemonListCache = new Map();
+const pokemonFullCache = new Map();
 
 // Loading indicator
 function showLoadingIndicator(container) {
@@ -158,7 +158,7 @@ async function loadPokemonBatch(pokemonList, startIndex, batchSize, pokemonListD
             event.preventDefault();
             displayPokemonDetails(pokemon.name);
         });
-        pokemonListDiv.appendChild(pokemonCard); // Ensure cards are appended to the grid container
+        pokemonListDiv.appendChild(pokemonCard);
     });
 
     return startIndex + batch.length;
@@ -188,10 +188,8 @@ async function displayPokemonList() {
 
     console.log(`Total Pokémon to load: ${totalPokemon}`);
 
-    // Load the first batch (6 Pokémon to match the image initially)
     loadedCount = await loadPokemonBatch(pokemonList, loadedCount, 6, pokemonListDiv);
 
-    // Add a sentinel element and a "Load More" button
     const loadMoreContainer = document.createElement('div');
     loadMoreContainer.id = 'loadMoreContainer';
     loadMoreContainer.style.textAlign = 'center';
@@ -300,8 +298,6 @@ async function displayPokemonDetails(name) {
         evolutionData = await fetchEvolutionChain(speciesData.evolution_chain.url);
     } catch (error) {
         console.error(`Failed to load species/evolution data for ${name}`);
-        alert(`Failed to load evolution data for ${name}. Some details may be missing.`);
-        return;
     }
 
     const modal = document.getElementById('pokemonModal');
@@ -317,10 +313,12 @@ async function displayPokemonDetails(name) {
     modalContent.classList.add(primaryType);
 
     const evolutions = [];
-    let current = evolutionData.chain;
-    while (current) {
-        evolutions.push(current.species.name);
-        current = current.evolves_to[0];
+    if (evolutionData) {
+        let current = evolutionData.chain;
+        while (current) {
+            evolutions.push(current.species.name);
+            current = current.evolves_to[0];
+        }
     }
 
     const evolutionDetails = await Promise.all(
@@ -353,27 +351,31 @@ async function displayPokemonDetails(name) {
             <div class="modal-stats active" id="stats">
                 <h3>Stats</h3>
                 ${pokemonDetails.stats.map(stat => `
-                    <div class="stats-item"><p>${stat.stat.name.charAt(0).toUpperCase() + stat.stat.name.slice(1)}: ${stat.base_stat}</p>
-                    <div class="stats-bar"><div class="stats-fill ${stat.stat.name}" style="width: ${(stat.base_stat / 255) * 100}%"></div></div></div>
+                    <div class="stats-item">
+                        <p>${stat.stat.name.charAt(0).toUpperCase() + stat.stat.name.slice(1)}: ${stat.base_stat}</p>
+                        <div class="stats-bar">
+                            <div class="stats-fill ${stat.stat.name}" style="width: ${(stat.base_stat / 255) * 100}%"></div>
+                        </div>
+                    </div>
                 `).join('')}
             </div>
             <div class="modal-stats" id="moves">
                 <h3>Moves</h3>
                 <div class="move-list">
                     ${pokemonDetails.moves.slice(0, 10).map(move => `
-                        <div class="move-item">${move.move.name.charAt(0).toUpperCase() + move.move.name.slice(1)}</div>
+                        <div class="move-item">${move.move.name.charAt(0).toUpperCase() + move.move.name.slice(1).replace('-', ' ')}</div>
                     `).join('')}
                 </div>
             </div>
             <div class="modal-stats" id="evolutions">
                 <h3>Evolutions</h3>
                 <div class="evolution-list">
-                    ${evolutionDetails.map(evo => `
+                    ${evolutionDetails.length > 0 ? evolutionDetails.map(evo => `
                         <div class="evolution-item" data-pokemon="${evo.name}">
                             ${evo.sprite ? `<img src="${evo.sprite}" alt="${evo.name}">` : `<p>Image unavailable</p>`}
                             <p>${evo.name.charAt(0).toUpperCase() + evo.name.slice(1)}</p>
                         </div>
-                    `).join('')}
+                    `).join('') : '<p>No evolution data available</p>'}
                 </div>
             </div>
         </div>
