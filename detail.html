@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pokéguide - Details</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="shortcut icon" type="image/x-icon" href="./pokeball.webp" />
+    <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./style.css">
+</head>
+
+<body>
+    <div id="globalLoader" class="global-loader">
+        <div class="loader-box">
+            <div class="horizontal-loader-area">
+                <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/25.gif" alt="Running Pokemon" class="running-pokemon" id="runningPokemon">
+                <div class="progress-bar-container">
+                    <div class="progress-bar-fill" id="loaderProgress"></div>
+                </div>
+            </div>
+            <div class="loading-text">LOADING...</div>
+        </div>
+    </div>
+    <header class="header">
+        <div class="container">
+            <a href="index.html" class="back-link">← BACK TO POKÉGUIDE</a>
+            <h1 class="logo">POK<span class="logo-accent">É</span>GUIDE</h1>
+        </div>
+    </header>
+
+    <main class="detail-container">
+        <div class="pokemon-detail">
+            <div class="pokemon-display">
+                <div class="gen-badge" id="genBadge">GEN I</div>
+                <img id="pokemonImage" src="" alt="Pokemon" class="pokemon-image">
+                <h1 id="pokemonName" class="pokemon-name"></h1>
+                <div class="type-badges" id="typeBadges"></div>
+            </div>
+
+            <div class="detail-info">
+                <div class="info-section">
+                    <h3>About</h3>
+                    <p id="pokemonDescription"></p>
+                    <div class="stats-grid">
+                        <div class="stat">
+                            <span class="stat-label">Height</span>
+                            <span class="stat-value" id="pokemonHeight"></span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">Weight</span>
+                            <span class="stat-value" id="pokemonWeight"></span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">HP</span>
+                            <span class="stat-value" id="pokemonHp"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="info-section">
+                    <h3>Evolution</h3>
+                    <div class="evolution-chain" id="evolutionChain"></div>
+                </div>
+
+                <div class="info-section stats-container">
+                    <h3>Stats</h3>
+                    <div class="stats-bars" id="statsBars"></div>
+                </div>
+
+                <div class="info-section">
+                    <h3>Abilities</h3>
+                    <div class="abilities-list" id="abilities"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="moves-section">
+            <h2>Pokémon Moves</h2>
+            <div class="moves-grid" id="movesGrid"></div>
+        </div>
+    </main>
+
+    <script src="./script.js"></script>
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const pokemonId = urlParams.get('id');
+        if (pokemonId) {
+            simulateLoading(() => loadPokemonDetail(pokemonId));
+        } else {
+            window.location.href = './index.html';
+        }
+    </script>
+</body>
+
+</html>
