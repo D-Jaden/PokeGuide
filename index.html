@@ -1,63 +1,56 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pokédex</title>
-    <link rel="stylesheet" href="styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <title>Pokéguide - Catch 'Em All!</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="shortcut icon" type="image/x-icon" href="./pokeball.webp" />
+    <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./style.css">
 </head>
+
 <body>
-    <header>
-        <h1>Pokédex</h1>
+    <header class="header">
+        <div class="container">
+            <h1 class="logo">POKÉGUIDE</h1>
+            <div class="search-bar">
+                <input type="text" id="searchInput" placeholder="Search by name or ID..." class="search-input">
+                <button id="searchBtn" class="search-btn">GO</button>
+            </div>
+            <button id="randomBtn" class="random-btn">
+                <span class="random-icon"></span> RANDOM
+            </button>
+        </div>
     </header>
-    <div class="container">
-        <div class="search-container">
-            <input type="text" id="searchInput" placeholder="Search Pokémon">
+
+    <nav class="generation-filter">
+        <div class="container">
+            <span class="filter-label">GEN:</span>
+            <button class="gen-btn active" data-gen="all">All</button>
+            <button class="gen-btn" data-gen="1">I</button>
+            <button class="gen-btn" data-gen="2">II</button>
+            <button class="gen-btn" data-gen="3">III</button>
+            <button class="gen-btn" data-gen="4">IV</button>
+            <button class="gen-btn" data-gen="5">V</button>
+            <button class="gen-btn" data-gen="6">VI</button>
+            <button class="gen-btn" data-gen="7">VII</button>
+            <button class="gen-btn" data-gen="8">VIII</button>
         </div>
-        <div class="pokedex">
-            <div class="pokemon-list" id="pokemonList"></div>
-        </div>
-    </div>
-    <!-- Modal for Pokémon details -->
-    <div class="modal" id="pokemonModal">
-        <div class="modal-content" id="modalContent">
-            <span class="close-btn" id="closeModal">&times;</span>
-            <div class="modal-container">
-                <div class="modal-details">
-                    <h2>Charizard #6</h2>
-                    <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/6.png" alt="Charizard">
-                    <p><strong>Type:</strong> fire, flying</p>
-                    <p><strong>Height:</strong> 1.7 m</p>
-                    <p><strong>Weight:</strong> 90.5 kg</p>
-                    <div class="modal-tabs">
-                        <div class="tab active" data-tab="stats">Stats</div>
-                        <div class="tab" data-tab="moves">Moves</div>
-                        <div class="tab" data-tab="evolutions">Evolutions</div>
-                    </div>
-                </div>
-                <div class="modal-stats active" id="stats">
-                    <h3>Stats</h3>
-                    <div class="stats-item"><p>Hp: 78</p><div class="stats-bar"><div class="stats-fill hp" style="width: 30.6%"></div></div></div>
-                    <div class="stats-item"><p>Attack: 84</p><div class="stats-bar"><div class="stats-fill attack" style="width: 32.9%"></div></div></div>
-                    <div class="stats-item"><p>Defense: 78</p><div class="stats-bar"><div class="stats-fill defense" style="width: 30.6%"></div></div></div>
-                    <div class="stats-item"><p>Special-attack: 109</p><div class="stats-bar"><div class="stats-fill special-attack" style="width: 42.7%"></div></div></div>
-                    <div class="stats-item"><p>Special-defense: 85</p><div class="stats-bar"><div class="stats-fill special-defense" style="width: 33.3%"></div></div></div>
-                    <div class="stats-item"><p>Speed: 100</p><div class="stats-bar"><div class="stats-fill speed" style="width: 39.2%"></div></div></div>
-                </div>
-                <div class="modal-stats" id="moves">
-                    <h3>Moves</h3>
-                    <p>Move 1</p>
-                    <p>Move 2</p>
-                </div>
-                <div class="modal-stats" id="evolutions">
-                    <h3>Evolutions</h3>
-                    <p>Charmander</p>
-                    <p>Charmeleon</p>
-                </div>
+    </nav>
+
+    <main class="main-content">
+        <div class="container">
+            <h2 class="pokemon-title">ALL POKÉMON</h2>
+            <div class="pokemon-grid" id="pokemonGrid">
+                <div class="loading">Loading Pokémon...</div>
             </div>
         </div>
-    </div>
-    <script src="script.js"></script>
+    </main>
+
+    <script src="./script.js"></script>
 </body>
+
 </html>
