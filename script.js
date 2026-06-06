@@ -1,474 +1,392 @@
-// Cache to store Pokémon details
-const pokemonListCache = new Map();
-const pokemonFullCache = new Map();
+const API_URL = 'https://pokeapi.co/api/v2';
+let allPokemonData = [];
+let cachedPokemonDetails = {};
+let currentGeneration = 'all';
+let isSearching = false;
 
-// Loading indicator
-function showLoadingIndicator(container) {
-    const loadingDiv = document.createElement('div');
-    loadingDiv.classList.add('loading');
-    loadingDiv.innerHTML = '<div class="spinner"></div>';
-    container.appendChild(loadingDiv);
-}
+const generationRanges = {
+    1: { start: 1, end: 151 },
+    2: { start: 152, end: 251 },
+    3: { start: 252, end: 386 },
+    4: { start: 387, end: 493 },
+    5: { start: 494, end: 649 },
+    6: { start: 650, end: 721 },
+    7: { start: 722, end: 809 },
+    8: { start: 810, end: 905 }
+};
 
-function removeLoadingIndicator(container) {
-    const loadingDiv = container.querySelector('.loading');
-    if (loadingDiv) {
-        container.removeChild(loadingDiv);
-    }
-}
-
-// Fetch all Pokémon (up to 1025) with minimal data
 async function fetchPokemonList() {
     try {
-        const response = await fetch('https://pokeapi.co/api/v2/pokemon?limit=1025');
+        const response = await fetch(`${API_URL}/pokemon?limit=905&offset=0`);
         const data = await response.json();
-        console.log(`Fetched Pokémon list: ${data.results.length} Pokémon`);
-        return data.results;
-    } catch (error) {
-        console.error('Error fetching Pokémon list:', error);
-        throw error;
-    }
-}
-
-// Fetch minimal details for a batch of Pokémon with retry logic
-async function fetchPokemonMinimalDetailsBatch(names, retries = 3) {
-    const fetchPromises = names.map(async (name) => {
-        if (pokemonListCache.has(name)) {
-            return pokemonListCache.get(name);
-        }
-        let attempt = 0;
-        while (attempt < retries) {
-            try {
-                const response = await fetch(`https://pokeapi.co/api/v2/pokemon/${name}`);
-                const data = await response.json();
-                const minimalData = {
-                    name: data.name,
-                    sprite: data.sprites.front_default,
-                    type: data.types[0].type.name
-                };
-                pokemonListCache.set(name, minimalData);
-                pokemonFullCache.set(name, data);
-                return minimalData;
-            } catch (error) {
-                attempt++;
-                console.warn(`Failed to fetch ${name}, attempt ${attempt}/${retries}:`, error);
-                if (attempt === retries) {
-                    console.error(`Failed to fetch ${name} after ${retries} attempts`);
-                    return null;
-                }
-                await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
-            }
-        }
-    });
-    const results = await Promise.all(fetchPromises);
-    return results.filter(result => result !== null);
-}
-
-// Fetch full details for a single Pokémon (used in modal)
-async function fetchPokemonDetails(name, retries = 3) {
-    if (pokemonFullCache.has(name)) {
-        return pokemonFullCache.get(name);
-    }
-    let attempt = 0;
-    while (attempt < retries) {
-        try {
-            const response = await fetch(`https://pokeapi.co/api/v2/pokemon/${name}`);
-            const data = await response.json();
-            pokemonFullCache.set(name, data);
-            pokemonListCache.set(name, {
-                name: data.name,
-                sprite: data.sprites.front_default,
-                type: data.types[0].type.name
-            });
-            return data;
-        } catch (error) {
-            attempt++;
-            console.warn(`Failed to fetch details for ${name}, attempt ${attempt}/${retries}:`, error);
-            if (attempt === retries) {
-                console.error(`Failed to fetch details for ${name} after ${retries} attempts`);
-                throw error;
-            }
-            await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
-        }
-    }
-}
-
-// Fetch Pokémon species data (for evolution chain)
-async function fetchPokemonSpecies(name, retries = 3) {
-    let attempt = 0;
-    while (attempt < retries) {
-        try {
-            const response = await fetch(`https://pokeapi.co/api/v2/pokemon-species/${name}`);
-            const data = await response.json();
-            return data;
-        } catch (error) {
-            attempt++;
-            console.warn(`Failed to fetch species for ${name}, attempt ${attempt}/${retries}:`, error);
-            if (attempt === retries) {
-                console.error(`Failed to fetch species for ${name} after ${retries} attempts`);
-                throw error;
-            }
-            await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
-        }
-    }
-}
-
-// Fetch evolution chain
-async function fetchEvolutionChain(url, retries = 3) {
-    let attempt = 0;
-    while (attempt < retries) {
-        try {
-            const response = await fetch(url);
-            const data = await response.json();
-            return data;
-        } catch (error) {
-            attempt++;
-            console.warn(`Failed to fetch evolution chain, attempt ${attempt}/${retries}:`, error);
-            if (attempt === retries) {
-                console.error(`Failed to fetch evolution chain after ${retries} attempts`);
-                throw error;
-            }
-            await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
-        }
-    }
-}
-
-// Load a batch of Pokémon and append to the list
-async function loadPokemonBatch(pokemonList, startIndex, batchSize, pokemonListDiv) {
-    const batch = pokemonList.slice(startIndex, startIndex + batchSize);
-    const names = batch.map(pokemon => pokemon.name);
-
-    console.log(`Loading batch: ${startIndex} to ${startIndex + batch.length - 1}`);
-
-    const pokemonDetailsBatch = await fetchPokemonMinimalDetailsBatch(names);
-
-    pokemonDetailsBatch.forEach((pokemonDetails, index) => {
-        const pokemon = batch[index];
-        const pokemonCard = document.createElement('div');
-        pokemonCard.classList.add('pokemon-card');
-
-        const primaryType = pokemonDetails.type;
-        pokemonCard.classList.add(primaryType);
-
-        pokemonCard.innerHTML = `
-            <img src="${pokemonDetails.sprite}" alt="${pokemon.name}">
-            <h3>${pokemon.name.charAt(0).toUpperCase() + pokemon.name.slice(1)}</h3>
-        `;
-        pokemonCard.addEventListener('click', (event) => {
-            event.preventDefault();
-            displayPokemonDetails(pokemon.name);
+        
+        allPokemonData = data.results.map((poke, index) => {
+            return {
+                ...poke,
+                id: index + 1
+            };
         });
-        pokemonListDiv.appendChild(pokemonCard);
-    });
-
-    return startIndex + batch.length;
+        
+        setupEventListeners();
+        await loadGeneration('1');
+    } catch (error) {
+        console.error('Error fetching Pokémon:', error);
+        document.getElementById('pokemonGrid').innerHTML = 
+            '<div class="loading">Error loading Pokémon. Please try again.</div>';
+    }
 }
 
-// Display the Pokémon list with infinite scrolling
-async function displayPokemonList() {
-    const pokemonListDiv = document.getElementById('pokemonList');
-    if (!pokemonListDiv) {
-        console.error('Pokemon list container not found');
-        return;
-    }
-    pokemonListDiv.innerHTML = '';
-
-    let pokemonList;
-    try {
-        pokemonList = await fetchPokemonList();
-    } catch (error) {
-        console.error('Failed to load Pokémon list. Please refresh the page.');
-        pokemonListDiv.innerHTML = '<p>Failed to load Pokémon list. Please try again later.</p>';
-        return;
-    }
-
-    let loadedCount = 0;
-    const batchSize = 20;
-    const totalPokemon = pokemonList.length;
-
-    console.log(`Total Pokémon to load: ${totalPokemon}`);
-
-    loadedCount = await loadPokemonBatch(pokemonList, loadedCount, 6, pokemonListDiv);
-
-    const loadMoreContainer = document.createElement('div');
-    loadMoreContainer.id = 'loadMoreContainer';
-    loadMoreContainer.style.textAlign = 'center';
-    loadMoreContainer.style.padding = '20px';
-
-    const sentinel = document.createElement('div');
-    sentinel.id = 'sentinel';
-    sentinel.style.height = '1px';
-    loadMoreContainer.appendChild(sentinel);
-
-    const loadMoreButton = document.createElement('button');
-    loadMoreButton.textContent = 'Load More Pokémon';
-    loadMoreButton.style.padding = '10px 20px';
-    loadMoreButton.style.fontSize = '1rem';
-    loadMoreButton.style.cursor = 'pointer';
-    loadMoreButton.style.display = 'none';
-    loadMoreContainer.appendChild(loadMoreButton);
-
-    pokemonListDiv.appendChild(loadMoreContainer);
-
-    let isLoading = false;
-    const observer = new IntersectionObserver(async (entries) => {
-        const entry = entries[0];
-        if (entry.isIntersecting && loadedCount < totalPokemon && !isLoading) {
-            isLoading = true;
-            observer.unobserve(sentinel);
-
-            console.log(`Sentinel intersected, loading more Pokémon... Loaded: ${loadedCount}/${totalPokemon}`);
-
-            try {
-                showLoadingIndicator(loadMoreContainer);
-                loadedCount = await loadPokemonBatch(pokemonList, loadedCount, batchSize, pokemonListDiv);
-            } catch (error) {
-                console.error('Error loading batch:', error);
-                loadMoreButton.style.display = 'block';
-            } finally {
-                removeLoadingIndicator(loadMoreContainer);
-            }
-
-            if (loadedCount < totalPokemon) {
-                const newSentinel = document.createElement('div');
-                newSentinel.id = 'sentinel';
-                newSentinel.style.height = '1px';
-                loadMoreContainer.insertBefore(newSentinel, loadMoreButton);
-                observer.observe(newSentinel);
-            } else {
-                loadMoreContainer.remove();
-                console.log('All Pokémon loaded!');
-            }
-
-            console.log(`After loading batch: Loaded ${loadedCount}/${totalPokemon} Pokémon`);
-            isLoading = false;
-        }
-    }, {
-        root: null,
-        rootMargin: '200px',
-        threshold: 0.1
-    });
-
-    observer.observe(sentinel);
-
-    loadMoreButton.addEventListener('click', async () => {
-        if (loadedCount < totalPokemon && !isLoading) {
-            isLoading = true;
-            loadMoreButton.disabled = true;
-
-            console.log(`Manual load triggered... Loaded: ${loadedCount}/${totalPokemon}`);
-
-            try {
-                showLoadingIndicator(loadMoreContainer);
-                loadedCount = await loadPokemonBatch(pokemonList, loadedCount, batchSize, pokemonListDiv);
-            } catch (error) {
-                console.error('Error loading batch manually:', error);
-            } finally {
-                removeLoadingIndicator(loadMoreContainer);
-            }
-
-            if (loadedCount < totalPokemon) {
-                observer.observe(sentinel);
-            } else {
-                loadMoreContainer.remove();
-                console.log('All Pokémon loaded!');
-            }
-
-            loadMoreButton.disabled = false;
-            console.log(`After manual load: Loaded ${loadedCount}/${totalPokemon} Pokémon`);
-            isLoading = false;
-        }
-    });
-}
-
-// Display Pokémon details in a modal
-async function displayPokemonDetails(name) {
-    let pokemonDetails;
-    try {
-        pokemonDetails = await fetchPokemonDetails(name);
-    } catch (error) {
-        console.error(`Failed to load details for ${name}`);
-        alert(`Failed to load details for ${name}. Please try again.`);
-        return;
-    }
-
-    let speciesData, evolutionData;
-    try {
-        speciesData = await fetchPokemonSpecies(name);
-        evolutionData = await fetchEvolutionChain(speciesData.evolution_chain.url);
-    } catch (error) {
-        console.error(`Failed to load species/evolution data for ${name}`);
-    }
-
-    const modal = document.getElementById('pokemonModal');
-    const modalContent = document.getElementById('modalContent');
+async function loadGeneration(gen) {
+    const grid = document.getElementById('pokemonGrid');
+    if (grid) grid.innerHTML = '<div class="loading">Loading Pokémon...</div>';
     
-    if (!modal || !modalContent) {
-        console.error('Modal or modal content not found');
+    currentGeneration = gen;
+    isSearching = false;
+    
+    let toLoad = [];
+    if (gen === 'all') {
+        toLoad = allPokemonData.slice(0, 151); // Load Gen 1 for "All" initially to prevent extreme lag
+    } else {
+        const range = generationRanges[parseInt(gen)];
+        toLoad = allPokemonData.slice(range.start - 1, range.end);
+    }
+    
+    await fetchAndRender(toLoad);
+}
+
+async function fetchAndRender(pokemonList) {
+    const grid = document.getElementById('pokemonGrid');
+    if (!grid) return;
+    
+    const chunkSize = 50;
+    
+    grid.innerHTML = '';
+    
+    if (pokemonList.length === 0) {
+        grid.innerHTML = '<div class="loading">No Pokémon found.</div>';
         return;
     }
 
-    const primaryType = pokemonDetails.types[0].type.name;
-    modalContent.className = 'modal-content';
-    modalContent.classList.add(primaryType);
+    for (let i = 0; i < pokemonList.length; i += chunkSize) {
+        // If we switched generation or started searching while loading, abort this render loop
+        if (isSearching && pokemonList.length > 50) return; 
 
-    const evolutions = [];
-    if (evolutionData) {
-        let current = evolutionData.chain;
-        while (current) {
-            evolutions.push(current.species.name);
-            current = current.evolves_to[0];
-        }
-    }
-
-    const evolutionDetails = await Promise.all(
-        evolutions.map(async (evoName) => {
+        const chunk = pokemonList.slice(i, i + chunkSize);
+        const toFetch = chunk.filter(p => !cachedPokemonDetails[p.id]);
+        
+        if (toFetch.length > 0) {
             try {
-                const details = await fetchPokemonDetails(evoName);
-                return { name: evoName, sprite: details.sprites.front_default };
-            } catch (error) {
-                console.error(`Failed to load evolution details for ${evoName}`);
-                return { name: evoName, sprite: null };
+                const details = await Promise.all(
+                    toFetch.map(async (poke) => {
+                        const res = await fetch(poke.url);
+                        return res.json();
+                    })
+                );
+                details.forEach(d => cachedPokemonDetails[d.id] = d);
+            } catch (err) {
+                console.error("Failed fetching detail chunk", err);
             }
-        })
-    );
+        }
+        
+        const chunkDetails = chunk.map(p => cachedPokemonDetails[p.id]).filter(d => d);
+        
+        const html = chunkDetails.map(renderSingleCard).join('');
+        grid.innerHTML += html;
+    }
+}
 
-    modalContent.innerHTML = `
-        <span class="close-btn" id="closeModal">×</span>
-        <div class="modal-container">
-            <div class="modal-details">
-                <h2>${pokemonDetails.name.charAt(0).toUpperCase() + pokemonDetails.name.slice(1)} #${pokemonDetails.id}</h2>
-                <img src="${pokemonDetails.sprites.front_default}" alt="${pokemonDetails.name}">
-                <p><strong>Type:</strong> ${pokemonDetails.types.map(type => type.type.name).join(', ')}</p>
-                <p><strong>Height:</strong> ${pokemonDetails.height / 10} m</p>
-                <p><strong>Weight:</strong> ${pokemonDetails.weight / 10} kg</p>
-                <div class="modal-tabs">
-                    <div class="tab active" data-tab="stats">Stats</div>
-                    <div class="tab" data-tab="moves">Moves</div>
-                    <div class="tab" data-tab="evolutions">Evolutions</div>
-                </div>
+function renderSingleCard(pokemon) {
+    const types = pokemon.types.map(t => t.type.name);
+    const mainType = types[0];
+    const description = getRandomDescription(pokemon.name);
+    const hp = pokemon.stats[0].base_stat;
+    const gen = getGenFromId(pokemon.id);
+    
+    return `
+        <div class="pokemon-card custom-pokemon-card" onclick="goToDetail(${pokemon.id})">
+            <div class="card-image-area">
+                <div class="gen-badge-custom">Pokemon Gen ${gen}</div>
+                <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${pokemon.id}.png" 
+                     alt="${pokemon.name}" onerror="this.src='https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokemon.id}.png'">
             </div>
-            <div class="modal-stats active" id="stats">
-                <h3>Stats</h3>
-                ${pokemonDetails.stats.map(stat => `
-                    <div class="stats-item">
-                        <p>${stat.stat.name.charAt(0).toUpperCase() + stat.stat.name.slice(1)}: ${stat.base_stat}</p>
-                        <div class="stats-bar">
-                            <div class="stats-fill ${stat.stat.name}" style="width: ${(stat.base_stat / 255) * 100}%"></div>
-                        </div>
-                    </div>
-                `).join('')}
+            <div class="card-badges-row">
+                <div class="custom-pill name-pill">${pokemon.name.charAt(0).toUpperCase() + pokemon.name.slice(1)}</div>
+                <div class="custom-pill type-pill type-${mainType}">${mainType.charAt(0).toUpperCase() + mainType.slice(1)}</div>
             </div>
-            <div class="modal-stats" id="moves">
-                <h3>Moves</h3>
-                <div class="move-list">
-                    ${pokemonDetails.moves.slice(0, 10).map(move => `
-                        <div class="move-item">${move.move.name.charAt(0).toUpperCase() + move.move.name.slice(1).replace('-', ' ')}</div>
-                    `).join('')}
-                </div>
+            <div class="card-desc-box">
+                <div class="hp-tab">Pokemon Hp ${hp}</div>
+                <span class="desc-title">Pokemon Desc</span>
+                <div class="desc-content">${description}</div>
             </div>
-            <div class="modal-stats" id="evolutions">
-                <h3>Evolutions</h3>
-                <div class="evolution-list">
-                    ${evolutionDetails.length > 0 ? evolutionDetails.map(evo => `
-                        <div class="evolution-item" data-pokemon="${evo.name}">
-                            ${evo.sprite ? `<img src="${evo.sprite}" alt="${evo.name}">` : `<p>Image unavailable</p>`}
-                            <p>${evo.name.charAt(0).toUpperCase() + evo.name.slice(1)}</p>
-                        </div>
-                    `).join('') : '<p>No evolution data available</p>'}
-                </div>
-            </div>
+            <button class="custom-view-btn">View Evolutions</button>
         </div>
     `;
-
-    modal.style.display = 'flex';
-
-    const closeModal = document.getElementById('closeModal');
-    closeModal.addEventListener('click', () => {
-        modal.style.display = 'none';
-    });
-
-    modal.addEventListener('click', (event) => {
-        if (event.target === modal) {
-            modal.style.display = 'none';
-        }
-    });
-
-    const tabs = modalContent.querySelectorAll('.tab');
-    const tabContents = modalContent.querySelectorAll('.modal-stats');
-
-    tabs.forEach(tab => {
-        tab.addEventListener('click', () => {
-            tabs.forEach(t => t.classList.remove('active'));
-            tabContents.forEach(content => content.classList.remove('active'));
-
-            tab.classList.add('active');
-            const tabId = tab.getAttribute('data-tab');
-            document.getElementById(tabId).classList.add('active');
-        });
-    });
-
-    const evolutionItems = modalContent.querySelectorAll('.evolution-item');
-    evolutionItems.forEach(item => {
-        item.addEventListener('click', (event) => {
-            event.preventDefault();
-            const pokemonName = item.getAttribute('data-pokemon');
-            displayPokemonDetails(pokemonName);
-        });
-    });
 }
 
-// Search functionality with caching
-async function setupSearch() {
+function getGenFromId(id) {
+    for (const [gen, range] of Object.entries(generationRanges)) {
+        if (id >= range.start && id <= range.end) return gen;
+    }
+    return '?';
+}
+
+function getTypeColor(type) {
+    const colors = {
+        normal: '#A8A878',
+        fire: '#F08030',
+        water: '#6890F0',
+        grass: '#78C850',
+        electric: '#F8D030',
+        ice: '#98D8D8',
+        fighting: '#C03028',
+        poison: '#A040A0',
+        ground: '#E0C068',
+        flying: '#A890F0',
+        psychic: '#F85888',
+        bug: '#A8B820',
+        rock: '#B8A038',
+        ghost: '#705898',
+        dragon: '#7038F8',
+        dark: '#705848',
+        steel: '#B8B8D0',
+        fairy: '#EE99AC'
+    };
+    return colors[type] || '#999999';
+}
+
+function getRandomDescription(name) {
+    const descriptions = {
+        bulbasaur: 'A strange seed was planted on its back. The plant sprouts and grows with this Pokémon.',
+        ivysaur: 'When the bulb on its back grows large, it appears to lose the ability to stand on its hind legs.',
+        venusaur: 'The plant blooms when it is absorbing solar energy. It stays on the move to seek sunlight.',
+        charmander: 'The flame on its tail shows the strength of its life force. If it is weak, the flame also burns weakly.',
+        charmeleon: 'Known as the "Flame Pokémon" since ancient times, it is a hot-blooded Pokémon that uses its sharp fangs and claws.',
+        charizard: 'It spits fire that is hot enough to melt boulders. Known to cause forest fires unintentionally.',
+        squirtle: 'It hides in its shell when it senses danger. It can remain withdrawn into its shell for days.',
+        wartortle: 'It tucks itself inside its shell to recover from injuries. It can detect nearby enemies by the flow of water.',
+        blastoise: 'The jets of water it forcefully ejects from the shells on its body are powerful enough to pierce holes.',
+    };
+    
+    return descriptions[name.toLowerCase()] || 'A mysterious Pokémon with untold potential and power.';
+}
+
+function setupEventListeners() {
+    const genButtons = document.querySelectorAll('.gen-btn');
+    genButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            genButtons.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            loadGeneration(btn.dataset.gen);
+        });
+    });
+    
     const searchInput = document.getElementById('searchInput');
-    if (!searchInput) {
-        console.error('Search input not found');
+    const searchBtn = document.getElementById('searchBtn');
+    
+    if (searchInput && searchBtn) {
+        searchBtn.addEventListener('click', performSearch);
+        searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') performSearch();
+        });
+    }
+    
+    const randomBtn = document.getElementById('randomBtn');
+    if (randomBtn) {
+        randomBtn.addEventListener('click', getRandomPokemon);
+    }
+}
+
+function performSearch() {
+    const searchInput = document.getElementById('searchInput');
+    const query = searchInput.value.toLowerCase().trim();
+    
+    if (!query) {
+        loadGeneration(currentGeneration);
         return;
     }
-    searchInput.addEventListener('input', async () => {
-        const searchTerm = searchInput.value.toLowerCase();
-        const pokemonList = await fetchPokemonList();
-        const filteredPokemon = pokemonList.filter(pokemon => pokemon.name.includes(searchTerm));
-        
-        const pokemonListDiv = document.getElementById('pokemonList');
-        if (!pokemonListDiv) {
-            console.error('Pokemon list container not found');
-            return;
-        }
-        pokemonListDiv.innerHTML = '';
-
-        const batchSize = 50;
-        for (let i = 0; i < filteredPokemon.length; i += batchSize) {
-            const batch = filteredPokemon.slice(i, i + batchSize);
-            const names = batch.map(pokemon => pokemon.name);
-            const pokemonDetailsBatch = await fetchPokemonMinimalDetailsBatch(names);
-
-            pokemonDetailsBatch.forEach((pokemonDetails, index) => {
-                const pokemon = batch[index];
-                const pokemonCard = document.createElement('div');
-                pokemonCard.classList.add('pokemon-card');
-
-                const primaryType = pokemonDetails.type;
-                pokemonCard.classList.add(primaryType);
-
-                pokemonCard.innerHTML = `
-                    <img src="${pokemonDetails.sprite}" alt="${pokemon.name}">
-                    <h3>${pokemon.name.charAt(0).toUpperCase() + pokemon.name.slice(1)}</h3>
-                `;
-                pokemonCard.addEventListener('click', (event) => {
-                    event.preventDefault();
-                    displayPokemonDetails(pokemon.name);
-                });
-                pokemonListDiv.appendChild(pokemonCard);
-            });
-
-            await new Promise(resolve => setTimeout(resolve, 0));
-        }
-    });
+    
+    isSearching = true;
+    const grid = document.getElementById('pokemonGrid');
+    if (grid) grid.innerHTML = '<div class="loading">Searching...</div>';
+    
+    const matching = allPokemonData.filter(p => 
+        p.name.toLowerCase().includes(query) || 
+        p.id.toString().includes(query)
+    );
+    
+    // Only render top 50 matches to avoid lag
+    fetchAndRender(matching.slice(0, 50));
 }
 
-// Initialize the app
-document.addEventListener('DOMContentLoaded', () => {
-    displayPokemonList();
-    setupSearch();
-});
+function getRandomPokemon() {
+    const random = allPokemonData[Math.floor(Math.random() * allPokemonData.length)];
+    if (random) goToDetail(random.id);
+}
+
+function goToDetail(pokemonId) {
+    window.location.href = `detail.html?id=${pokemonId}`;
+}
+
+async function loadPokemonDetail(id) {
+    try {
+        const response = await fetch(`${API_URL}/pokemon/${id}`);
+        const pokemon = await response.json();
+        
+        const speciesResponse = await fetch(pokemon.species.url);
+        const speciesData = await speciesResponse.json();
+        
+        const evolutionResponse = await fetch(speciesData.evolution_chain.url);
+        const evolutionData = await evolutionResponse.json();
+        
+        displayPokemonDetail(pokemon, speciesData, evolutionData);
+    } catch (error) {
+        console.error('Error loading Pokémon detail:', error);
+    }
+}
+
+function displayPokemonDetail(pokemon, speciesData, evolutionData) {
+    document.getElementById('pokemonName').textContent = 
+        pokemon.name.charAt(0).toUpperCase() + pokemon.name.slice(1);
+    
+    document.getElementById('pokemonImage').src = 
+        pokemon.sprites.other['official-artwork'].front_default || 
+        pokemon.sprites.front_default;
+    
+    const types = pokemon.types.map(t => t.type.name);
+    document.getElementById('typeBadges').innerHTML = 
+        types.map(type => `<span class="type-badge type-${type}">${type}</span>`).join('');
+    
+    const description = speciesData.flavor_text_entries
+        .find(e => e.language.name === 'en')?.flavor_text?.replace(/\n/g, ' ') || 
+        'A mysterious Pokémon.';
+    document.getElementById('pokemonDescription').textContent = description;
+    
+    document.getElementById('pokemonHeight').textContent = 
+        (pokemon.height / 10).toFixed(1) + ' m';
+    document.getElementById('pokemonWeight').textContent = 
+        (pokemon.weight / 10).toFixed(1) + ' kg';
+    document.getElementById('pokemonHp').textContent = 
+        pokemon.stats[0].base_stat;
+    
+    displayEvolution(evolutionData.chain);
+    displayStats(pokemon.stats);
+    displayAbilities(pokemon.abilities);
+    displayMoves(pokemon.moves);
+}
+
+function displayEvolution(chain) {
+    const evolutionChain = document.getElementById('evolutionChain');
+    let html = '';
+    let current = chain;
+    
+    while (current) {
+        const pokeName = current.species.name;
+        const pokeId = current.species.url.split('/')[6];
+        
+        html += `
+            <div class="evolution-item" onclick="goToDetail(${pokeId})">
+                <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${pokeId}.png" 
+                     alt="${pokeName}" onerror="this.src='https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokeId}.png'">
+                <div class="evo-name">${pokeName}</div>
+            </div>
+        `;
+        
+        if (current.evolves_to.length > 0) {
+            html += '<div class="evolution-arrow">→</div>';
+            current = current.evolves_to[0];
+        } else {
+            current = null;
+        }
+    }
+    
+    evolutionChain.innerHTML = html;
+}
+
+function displayStats(stats) {
+    const statNames = ['HP', 'ATK', 'DEF', 'SPA', 'SPD', 'SPE'];
+    const statsBars = document.getElementById('statsBars');
+    
+    statsBars.innerHTML = stats.map((stat, index) => {
+        const percentage = (stat.base_stat / 150) * 100;
+        return `
+            <div class="stat-bar">
+                <div class="stat-bar-name">${statNames[index]}</div>
+                <div class="stat-bar-fill">
+                    <div class="stat-bar-progress" style="width: ${percentage}%"></div>
+                </div>
+                <div class="stat-bar-value">${stat.base_stat}</div>
+            </div>
+        `;
+    }).join('');
+}
+
+function displayAbilities(abilities) {
+    const abilitiesList = document.getElementById('abilities');
+    abilitiesList.innerHTML = abilities.map(a => 
+        `<div class="ability-tag">${a.ability.name.replace('-', ' ')}</div>`
+    ).join('');
+}
+
+function displayMoves(moves) {
+    const movesGrid = document.getElementById('movesGrid');
+    const topMoves = moves.slice(0, 12);
+    
+    movesGrid.innerHTML = topMoves.map(moveData => {
+        const moveName = moveData.move.name.replace('-', ' ');
+        return `
+            <div class="move-card">
+                <div class="move-name">${moveName}</div>
+                <div class="move-info">
+                    <span class="move-power">PWR</span>
+                    <span class="move-accuracy">ACC</span>
+                </div>
+                <div class="move-description">A powerful move learned by this Pokémon</div>
+            </div>
+        `;
+    }).join('');
+}
+
+if (document.getElementById('pokemonGrid')) {
+    simulateLoading(fetchPokemonList);
+}
+
+function simulateLoading(callback) {
+    const loaderProgress = document.getElementById('loaderProgress');
+    const globalLoader = document.getElementById('globalLoader');
+    const runningPokemon = document.getElementById('runningPokemon');
+    
+    if (!loaderProgress || !globalLoader) {
+        if(callback) callback();
+        return;
+    }
+
+    if (runningPokemon) {
+        // Gen 1 to Gen 5 (1 - 649) have animated sprites in this API directory
+        const randomId = Math.floor(Math.random() * 649) + 1;
+        runningPokemon.src = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/${randomId}.gif`;
+    }
+
+    let progress = 0;
+    const interval = setInterval(() => {
+        // Grow slowly to take around 2.5 seconds to reach 90%
+        progress += Math.random() * 4 + 2;
+        if (progress > 90) progress = 90;
+        
+        loaderProgress.style.width = `${progress}%`;
+    }, 150);
+
+    if(callback) {
+        // Enforce a minimum delay of 2.5 seconds to show the animation
+        Promise.all([
+            callback(),
+            new Promise(resolve => setTimeout(resolve, 2500))
+        ]).then(() => {
+            clearInterval(interval);
+            loaderProgress.style.width = `100%`;
+            setTimeout(() => {
+                globalLoader.classList.add('hidden');
+                setTimeout(() => globalLoader.style.display = 'none', 500);
+            }, 400);
+        });
+    }
+}
