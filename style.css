@@ -513,6 +513,7 @@ header.header .container {
     display: flex;
     flex-direction: column;
     gap: 25px;
+    min-width: 0;
 }
 
 .info-section h3 {
@@ -759,9 +760,14 @@ header.header .container {
         grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     }
 
+    .detail-container {
+        padding: 20px 15px;
+    }
+
     .pokemon-detail {
         grid-template-columns: 1fr;
         gap: 30px;
+        padding: 20px;
     }
 
     .stats-grid {
@@ -770,6 +776,10 @@ header.header .container {
 
     .moves-grid {
         grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    }
+
+    .moves-section {
+        padding: 24px 20px;
     }
 
     .generation-filter .container {
