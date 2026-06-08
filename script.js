@@ -354,11 +354,17 @@ function displayPokemonDetail(pokemon, speciesData, evolutionData) {
         types.map(type => `<span class="type-badge type-${type}">${type}</span>`).join('');
     
     const description = speciesData.flavor_text_entries
-        .find(e => e.language.name === 'en')?.flavor_text?.replace(/\n/g, ' ') || 
+        .find(e => e.language.name === 'en')?.flavor_text?.replace(/\n|\f/g, ' ') || 
         'A mysterious Pokémon.';
     document.getElementById('pokemonDescription').textContent = description;
     
-    setupTTS(formatPokemonName(pokemon.name), description);
+    let genus = 'Pokémon';
+    if (speciesData && speciesData.genera) {
+        const enGenus = speciesData.genera.find(g => g.language.name === 'en');
+        if (enGenus) genus = enGenus.genus;
+    }
+    
+    setupTTS(formatPokemonName(pokemon.name), genus, description);
     
     document.getElementById('pokemonHeight').textContent = 
         (pokemon.height / 10).toFixed(1) + ' m';
@@ -523,7 +529,7 @@ function simulateLoading(callback) {
     }
 }
 
-function setupTTS(pokemonName, description) {
+function setupTTS(pokemonName, genus, description) {
     const ttsBtn = document.getElementById('ttsButton');
     if (!ttsBtn) return;
     
@@ -539,15 +545,16 @@ function setupTTS(pokemonName, description) {
             window.speechSynthesis.cancel();
             
             setTimeout(() => {
-                const textToSpeak = `${pokemonName}... ${description}`;
+                const textToSpeak = `${pokemonName}, the ${genus}... ${description}`;
                 const msg = new SpeechSynthesisUtterance(textToSpeak);
                 
                 const voices = window.speechSynthesis.getVoices();
                 if (voices.length > 0) {
                     const preferred = voices.find(v => 
+                        v.name.toLowerCase().includes('google us english') || 
+                        v.name.toLowerCase().includes('google uk english male') || 
                         v.name.toLowerCase().includes('daniel') || 
-                        v.name.toLowerCase().includes('fred') || 
-                        v.name.toLowerCase().includes('espeak') || 
+                        v.name.toLowerCase().includes('david') || 
                         (v.lang.startsWith('en') && v.name.toLowerCase().includes('male'))
                     );
                     if (preferred) {
@@ -556,8 +563,8 @@ function setupTTS(pokemonName, description) {
                 }
                 
                 msg.lang = 'en-US';
-                msg.rate = 0.85; 
-                msg.pitch = 0.6; 
+                msg.rate = 1.0; 
+                msg.pitch = 1.0; 
                 
                 window.speechSynthesis.speak(msg);
             }, 50);
