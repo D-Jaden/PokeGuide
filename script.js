@@ -12,18 +12,22 @@ const generationRanges = {
     5: { start: 494, end: 649 },
     6: { start: 650, end: 721 },
     7: { start: 722, end: 809 },
-    8: { start: 810, end: 905 }
+    8: { start: 810, end: 905 },
+    9: { start: 906, end: 1025 },
+    'Forms': { start: 10001, end: 10300 }
 };
 
 async function fetchPokemonList() {
     try {
-        const response = await fetch(`${API_URL}/pokemon?limit=905&offset=0`);
+        const response = await fetch(`${API_URL}/pokemon?limit=10000&offset=0`);
         const data = await response.json();
         
-        allPokemonData = data.results.map((poke, index) => {
+        allPokemonData = data.results.map((poke) => {
+            const urlParts = poke.url.split('/');
+            const id = parseInt(urlParts[urlParts.length - 2]);
             return {
                 ...poke,
-                id: index + 1
+                id: id
             };
         });
         
@@ -58,7 +62,7 @@ async function fetchAndRender(pokemonList) {
     const grid = document.getElementById('pokemonGrid');
     if (!grid) return;
     
-    const chunkSize = 50;
+    const chunkSize = 20;
     
     grid.innerHTML = '';
     
@@ -79,7 +83,16 @@ async function fetchAndRender(pokemonList) {
                 const details = await Promise.all(
                     toFetch.map(async (poke) => {
                         const res = await fetch(poke.url);
-                        return res.json();
+                        const data = await res.json();
+                        
+                        try {
+                            const speciesRes = await fetch(data.species.url);
+                            data.speciesData = await speciesRes.json();
+                        } catch (e) {
+                            console.error("Failed to fetch species for", data.name);
+                        }
+                        
+                        return data;
                     })
                 );
                 details.forEach(d => cachedPokemonDetails[d.id] = d);
@@ -98,7 +111,15 @@ async function fetchAndRender(pokemonList) {
 function renderSingleCard(pokemon) {
     const types = pokemon.types.map(t => t.type.name);
     const mainType = types[0];
-    const description = getRandomDescription(pokemon.name);
+    
+    let description = 'A mysterious Pokémon with untold potential and power.';
+    if (pokemon.speciesData && pokemon.speciesData.flavor_text_entries) {
+        const entry = pokemon.speciesData.flavor_text_entries.find(e => e.language.name === 'en');
+        if (entry) description = entry.flavor_text.replace(/\n|\f/g, ' ');
+    } else {
+        description = getRandomDescription(pokemon.name);
+    }
+    
     const hp = pokemon.stats[0].base_stat;
     const gen = getGenFromId(pokemon.id);
     
@@ -110,7 +131,7 @@ function renderSingleCard(pokemon) {
                      alt="${pokemon.name}" onerror="this.src='https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokemon.id}.png'">
             </div>
             <div class="card-badges-row">
-                <div class="custom-pill name-pill">${pokemon.name.charAt(0).toUpperCase() + pokemon.name.slice(1)}</div>
+                <div class="custom-pill name-pill">${formatPokemonName(pokemon.name)}</div>
                 <div class="custom-pill type-pill type-${mainType}">${mainType.charAt(0).toUpperCase() + mainType.slice(1)}</div>
             </div>
             <div class="card-desc-box">
@@ -128,6 +149,38 @@ function getGenFromId(id) {
         if (id >= range.start && id <= range.end) return gen;
     }
     return '?';
+}
+
+function formatPokemonName(name) {
+    let parts = name.split('-');
+    if (parts.length === 1) return parts[0].charAt(0).toUpperCase() + parts[0].slice(1);
+    
+    const base = parts[0].charAt(0).toUpperCase() + parts[0].slice(1);
+    
+    const prefixes = ['mega', 'alola', 'galar', 'hisui', 'paldea', 'gmax'];
+    const prefixMap = {
+        'alola': 'Alolan',
+        'galar': 'Galarian',
+        'hisui': 'Hisuian',
+        'paldea': 'Paldean',
+        'gmax': 'Gigantamax',
+        'mega': 'Mega'
+    };
+    
+    for (const p of prefixes) {
+        if (parts[1] === p) {
+            let prefixName = prefixMap[p];
+            let extra = parts.slice(2).join(' ').toUpperCase();
+            if (extra) {
+                return `${prefixName} ${base} ${extra}`;
+            }
+            return `${prefixName} ${base}`;
+        }
+    }
+    
+    const form = parts.slice(1).join(' ');
+    let formattedForm = form.charAt(0).toUpperCase() + form.slice(1);
+    return `${base} (${formattedForm})`;
 }
 
 function getTypeColor(type) {
@@ -196,9 +249,11 @@ function setupEventListeners() {
     }
 }
 
-function performSearch() {
+async function performSearch() {
     const searchInput = document.getElementById('searchInput');
     const query = searchInput.value.toLowerCase().trim();
+    const filterSelect = document.getElementById('searchFilter');
+    const filter = filterSelect ? filterSelect.value : 'name';
     
     if (!query) {
         loadGeneration(currentGeneration);
@@ -209,12 +264,48 @@ function performSearch() {
     const grid = document.getElementById('pokemonGrid');
     if (grid) grid.innerHTML = '<div class="loading">Searching...</div>';
     
-    const matching = allPokemonData.filter(p => 
-        p.name.toLowerCase().includes(query) || 
-        p.id.toString().includes(query)
-    );
+    let matching = [];
+
+    try {
+        if (filter === 'name') {
+            matching = allPokemonData.filter(p => 
+                p.name.toLowerCase().includes(query) || 
+                p.name.replace(/-/g, ' ').includes(query) ||
+                formatPokemonName(p.name).toLowerCase().includes(query) ||
+                p.id.toString() === query
+            );
+        } else if (filter === 'generation') {
+            let targetGen = query.replace('gen ', '').replace('generation ', '');
+            const genMap = { 'i': 1, 'ii': 2, 'iii': 3, 'iv': 4, 'v': 5, 'vi': 6, 'vii': 7, 'viii': 8, 'ix': 9 };
+            let genNum = parseInt(targetGen);
+            if (isNaN(genNum) && genMap[targetGen]) genNum = genMap[targetGen];
+            
+            if (genNum && generationRanges[genNum]) {
+                const range = generationRanges[genNum];
+                matching = allPokemonData.filter(p => p.id >= range.start && p.id <= range.end);
+            } else {
+                matching = allPokemonData.filter(p => getGenFromId(p.id).toString().toLowerCase() === query);
+            }
+        } else if (filter === 'type') {
+            const res = await fetch(`${API_URL}/type/${query}`);
+            if (res.ok) {
+                const data = await res.json();
+                const pokeNames = data.pokemon.map(p => p.pokemon.name);
+                matching = allPokemonData.filter(p => pokeNames.includes(p.name));
+            }
+        } else if (filter === 'ability') {
+            const queryAbility = query.replace(' ', '-');
+            const res = await fetch(`${API_URL}/ability/${queryAbility}`);
+            if (res.ok) {
+                const data = await res.json();
+                const pokeNames = data.pokemon.map(p => p.pokemon.name);
+                matching = allPokemonData.filter(p => pokeNames.includes(p.name));
+            }
+        }
+    } catch (e) {
+        console.error("Search error", e);
+    }
     
-    // Only render top 50 matches to avoid lag
     fetchAndRender(matching.slice(0, 50));
 }
 
@@ -245,12 +336,18 @@ async function loadPokemonDetail(id) {
 }
 
 function displayPokemonDetail(pokemon, speciesData, evolutionData) {
-    document.getElementById('pokemonName').textContent = 
-        pokemon.name.charAt(0).toUpperCase() + pokemon.name.slice(1);
+    document.getElementById('pokemonName').textContent = formatPokemonName(pokemon.name);
     
     document.getElementById('pokemonImage').src = 
         pokemon.sprites.other['official-artwork'].front_default || 
         pokemon.sprites.front_default;
+    
+    const genBadge = document.getElementById('genBadge');
+    if (genBadge) {
+        const gen = getGenFromId(pokemon.id);
+        const genText = (gen === 'Forms' || gen === '?') ? 'VARIANT' : `GEN ${gen.toString().toUpperCase()}`;
+        genBadge.textContent = genText;
+    }
     
     const types = pokemon.types.map(t => t.type.name);
     document.getElementById('typeBadges').innerHTML = 
@@ -261,6 +358,8 @@ function displayPokemonDetail(pokemon, speciesData, evolutionData) {
         'A mysterious Pokémon.';
     document.getElementById('pokemonDescription').textContent = description;
     
+    setupTTS(formatPokemonName(pokemon.name), description);
+    
     document.getElementById('pokemonHeight').textContent = 
         (pokemon.height / 10).toFixed(1) + ' m';
     document.getElementById('pokemonWeight').textContent = 
@@ -269,9 +368,43 @@ function displayPokemonDetail(pokemon, speciesData, evolutionData) {
         pokemon.stats[0].base_stat;
     
     displayEvolution(evolutionData.chain);
-    displayStats(pokemon.stats);
+    displayStats(pokemon.stats, pokemon.id > 10000);
     displayAbilities(pokemon.abilities);
     displayMoves(pokemon.moves);
+    if (speciesData && speciesData.varieties) {
+        displayForms(speciesData.varieties, pokemon.name);
+    }
+}
+
+function displayForms(varieties, currentName) {
+    const formsSection = document.getElementById('formsSection');
+    const alternativeForms = document.getElementById('alternativeForms');
+    
+    if (!formsSection || !alternativeForms) return;
+    
+    if (!varieties || varieties.length <= 1) {
+        formsSection.style.display = 'none';
+        return;
+    }
+    
+    formsSection.style.display = 'block';
+    
+    let html = '';
+    varieties.forEach(v => {
+        const urlParts = v.pokemon.url.split('/');
+        const pokeId = urlParts[urlParts.length - 2];
+        const pokeName = formatPokemonName(v.pokemon.name);
+        
+        html += `
+            <div class="evolution-item" onclick="goToDetail(${pokeId})" ${v.pokemon.name === currentName ? 'style="border: 2px solid var(--primary); border-radius: 12px; padding: 5px;"' : ''}>
+                <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${pokeId}.png" 
+                     alt="${pokeName}" onerror="this.src='https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokeId}.png'">
+                <div class="evo-name">${pokeName}</div>
+            </div>
+        `;
+    });
+    
+    alternativeForms.innerHTML = html;
 }
 
 function displayEvolution(chain) {
@@ -280,7 +413,7 @@ function displayEvolution(chain) {
     let current = chain;
     
     while (current) {
-        const pokeName = current.species.name;
+        const pokeName = formatPokemonName(current.species.name);
         const pokeId = current.species.url.split('/')[6];
         
         html += `
@@ -302,7 +435,7 @@ function displayEvolution(chain) {
     evolutionChain.innerHTML = html;
 }
 
-function displayStats(stats) {
+function displayStats(stats, isAlternate = false) {
     const statNames = ['HP', 'ATK', 'DEF', 'SPA', 'SPD', 'SPE'];
     const statsBars = document.getElementById('statsBars');
     
@@ -312,7 +445,7 @@ function displayStats(stats) {
             <div class="stat-bar">
                 <div class="stat-bar-name">${statNames[index]}</div>
                 <div class="stat-bar-fill">
-                    <div class="stat-bar-progress" style="width: ${percentage}%"></div>
+                    <div class="stat-bar-progress ${isAlternate ? 'alternate-form' : ''}" style="width: ${percentage}%"></div>
                 </div>
                 <div class="stat-bar-value">${stat.base_stat}</div>
             </div>
@@ -340,7 +473,6 @@ function displayMoves(moves) {
                     <span class="move-power">PWR</span>
                     <span class="move-accuracy">ACC</span>
                 </div>
-                <div class="move-description">A powerful move learned by this Pokémon</div>
             </div>
         `;
     }).join('');
@@ -389,4 +521,48 @@ function simulateLoading(callback) {
             }, 400);
         });
     }
+}
+
+function setupTTS(pokemonName, description) {
+    const ttsBtn = document.getElementById('ttsButton');
+    if (!ttsBtn) return;
+    
+    const newBtn = ttsBtn.cloneNode(true);
+    ttsBtn.parentNode.replaceChild(newBtn, ttsBtn);
+    
+    if ('speechSynthesis' in window) {
+        window.speechSynthesis.getVoices();
+    }
+    
+    newBtn.addEventListener('click', () => {
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+            
+            setTimeout(() => {
+                const textToSpeak = `${pokemonName}... ${description}`;
+                const msg = new SpeechSynthesisUtterance(textToSpeak);
+                
+                const voices = window.speechSynthesis.getVoices();
+                if (voices.length > 0) {
+                    const preferred = voices.find(v => 
+                        v.name.toLowerCase().includes('daniel') || 
+                        v.name.toLowerCase().includes('fred') || 
+                        v.name.toLowerCase().includes('espeak') || 
+                        (v.lang.startsWith('en') && v.name.toLowerCase().includes('male'))
+                    );
+                    if (preferred) {
+                        msg.voice = preferred;
+                    }
+                }
+                
+                msg.lang = 'en-US';
+                msg.rate = 0.85; 
+                msg.pitch = 0.6; 
+                
+                window.speechSynthesis.speak(msg);
+            }, 50);
+        } else {
+            alert('Text-to-Speech is not supported in your browser.');
+        }
+    });
 }
