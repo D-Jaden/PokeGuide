@@ -76,8 +76,10 @@ header.header .container {
 .search-bar {
     flex: 1;
     display: flex;
+    justify-content: center;
     gap: 10px;
-    max-width: 500px;
+    max-width: 600px;
+    margin: 0 auto;
 }
 
 .search-input {
@@ -98,6 +100,28 @@ header.header .container {
 
 .search-input:focus {
     background: rgba(255, 255, 255, 0.2);
+}
+
+.search-filter {
+    padding: 12px 16px;
+    border: none;
+    border-radius: 25px;
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    font-size: 14px;
+    outline: none;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.3s;
+}
+
+.search-filter:focus {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.search-filter option {
+    background: var(--bg-dark);
+    color: white;
 }
 
 .search-btn,
@@ -277,7 +301,7 @@ header.header .container {
     border: 2px solid black;
     border-radius: 12px;
     position: relative;
-    padding: 16px;
+    padding: 12px 16px 16px 16px;
     margin-top: 10px;
     min-height: 80px;
 }
@@ -297,7 +321,8 @@ header.header .container {
 
 .desc-title {
     font-size: 16px;
-    margin-bottom: 8px;
+    margin-bottom: 4px;
+    margin-top: -2px;
     display: block;
 }
 
@@ -528,6 +553,28 @@ header.header .container {
     margin-bottom: 12px;
 }
 
+.tts-btn {
+    background: var(--bg-dark);
+    color: white;
+    border: none;
+    border-radius: 20px;
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 20px;
+    transition: background 0.3s, transform 0.2s;
+    font-family: inherit;
+}
+
+.tts-btn:hover {
+    background: var(--primary);
+    transform: translateY(-2px);
+}
+
 .stats-container {
     background: var(--bg-light);
     padding: 20px;
@@ -647,6 +694,10 @@ header.header .container {
     height: 100%;
     background: var(--secondary);
     transition: width 0.5s ease;
+}
+
+.stat-bar-progress.alternate-form {
+    background: #8B5CF6;
 }
 
 .abilities-list {
