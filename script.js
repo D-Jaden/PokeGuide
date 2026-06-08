@@ -364,7 +364,12 @@ function displayPokemonDetail(pokemon, speciesData, evolutionData) {
         if (enGenus) genus = enGenus.genus;
     }
     
-    setupTTS(formatPokemonName(pokemon.name), genus, description);
+    let preEvoName = null;
+    if (evolutionData && evolutionData.chain && speciesData) {
+        preEvoName = getPreEvolution(evolutionData.chain, speciesData.name);
+    }
+    
+    setupTTS(formatPokemonName(pokemon.name), genus, description, preEvoName);
     
     document.getElementById('pokemonHeight').textContent = 
         (pokemon.height / 10).toFixed(1) + ' m';
@@ -411,6 +416,23 @@ function displayForms(varieties, currentName) {
     });
     
     alternativeForms.innerHTML = html;
+}
+
+function getPreEvolution(chain, targetName) {
+    let preEvo = null;
+    
+    function traverse(node, previousName) {
+        if (node.species.name === targetName) {
+            preEvo = previousName;
+            return;
+        }
+        for (let next of node.evolves_to) {
+            traverse(next, node.species.name);
+        }
+    }
+    
+    traverse(chain, null);
+    return preEvo;
 }
 
 function displayEvolution(chain) {
@@ -529,12 +551,19 @@ function simulateLoading(callback) {
     }
 }
 
-function setupTTS(pokemonName, genus, description) {
+function setupTTS(pokemonName, genus, description, preEvoName) {
     const ttsBtn = document.getElementById('ttsButton');
     if (!ttsBtn) return;
     
     const newBtn = ttsBtn.cloneNode(true);
     ttsBtn.parentNode.replaceChild(newBtn, ttsBtn);
+    
+    let textToSpeak = '';
+    if (preEvoName) {
+        textToSpeak = `${pokemonName}, a ${genus} that evolves from ${formatPokemonName(preEvoName)}... ${description}`;
+    } else {
+        textToSpeak = `${pokemonName}, a ${genus}... ${description}`;
+    }
     
     if ('speechSynthesis' in window) {
         window.speechSynthesis.getVoices();
@@ -545,7 +574,6 @@ function setupTTS(pokemonName, genus, description) {
             window.speechSynthesis.cancel();
             
             setTimeout(() => {
-                const textToSpeak = `${pokemonName}, the ${genus}... ${description}`;
                 const msg = new SpeechSynthesisUtterance(textToSpeak);
                 
                 const voices = window.speechSynthesis.getVoices();
@@ -553,8 +581,8 @@ function setupTTS(pokemonName, genus, description) {
                     const preferred = voices.find(v => 
                         v.name.toLowerCase().includes('google us english') || 
                         v.name.toLowerCase().includes('google uk english male') || 
-                        v.name.toLowerCase().includes('daniel') || 
                         v.name.toLowerCase().includes('david') || 
+                        v.name.toLowerCase().includes('daniel') || 
                         (v.lang.startsWith('en') && v.name.toLowerCase().includes('male'))
                     );
                     if (preferred) {
@@ -563,8 +591,8 @@ function setupTTS(pokemonName, genus, description) {
                 }
                 
                 msg.lang = 'en-US';
-                msg.rate = 1.0; 
-                msg.pitch = 1.0; 
+                msg.rate = 1.1; 
+                msg.pitch = 0.8; 
                 
                 window.speechSynthesis.speak(msg);
             }, 50);
