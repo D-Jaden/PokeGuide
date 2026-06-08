@@ -582,17 +582,27 @@ function setupTTS(pokemonName, genus, description, preEvoName) {
                 // console.log(voices.map(v => v.name));
                 
                 if (voices.length > 0) {
-                    // Encyclopedic narrator voices: Mark, Arthur, Google UK, David
-                    const preferred = voices.find(v => 
-                        v.name.toLowerCase().includes('mark') ||
-                        v.name.toLowerCase().includes('arthur') ||
-                        v.name.toLowerCase().includes('google uk english male') || 
-                        v.name.toLowerCase().includes('david') || 
-                        v.name.toLowerCase().includes('daniel') || 
-                        (v.lang.startsWith('en') && v.name.toLowerCase().includes('male'))
+                    // Aggressively search for male voices
+                    let preferred = voices.find(v => 
+                        v.lang.startsWith('en') && (
+                            v.name.toLowerCase().includes('male') ||
+                            v.name.toLowerCase().includes('david') ||
+                            v.name.toLowerCase().includes('mark') ||
+                            v.name.toLowerCase().includes('daniel') ||
+                            v.name.toLowerCase().includes('arthur')
+                        )
                     );
+                    
+                    // If no explicit "male" voice is found, check for espeak which defaults to a robotic male on Linux
+                    if (!preferred) {
+                        preferred = voices.find(v => v.lang.startsWith('en') && v.name.toLowerCase().includes('espeak'));
+                    }
+                    
                     if (preferred) {
                         msg.voice = preferred;
+                    } else {
+                        // For debugging: output available voices so the user can find a male one
+                        console.warn("No default male voice found. Available voices:", voices.map(v => v.name));
                     }
                 }
                 
