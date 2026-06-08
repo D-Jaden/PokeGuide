@@ -577,9 +577,15 @@ function setupTTS(pokemonName, genus, description, preEvoName) {
                 const msg = new SpeechSynthesisUtterance(textToSpeak);
                 
                 const voices = window.speechSynthesis.getVoices();
+                
+                // For debugging: log available voices so the user can see their options
+                // console.log(voices.map(v => v.name));
+                
                 if (voices.length > 0) {
+                    // Encyclopedic narrator voices: Mark, Arthur, Google UK, David
                     const preferred = voices.find(v => 
-                        v.name.toLowerCase().includes('google us english') || 
+                        v.name.toLowerCase().includes('mark') ||
+                        v.name.toLowerCase().includes('arthur') ||
                         v.name.toLowerCase().includes('google uk english male') || 
                         v.name.toLowerCase().includes('david') || 
                         v.name.toLowerCase().includes('daniel') || 
@@ -591,8 +597,10 @@ function setupTTS(pokemonName, genus, description, preEvoName) {
                 }
                 
                 msg.lang = 'en-US';
-                msg.rate = 1.1; 
-                msg.pitch = 0.8; 
+                // Slowed down slightly for clarity and informative tone
+                msg.rate = 0.9; 
+                // Pitch slightly lowered for an authoritative narrator voice
+                msg.pitch = 0.9; 
                 
                 window.speechSynthesis.speak(msg);
             }, 50);
