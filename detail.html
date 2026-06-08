@@ -44,6 +44,9 @@
                 <div class="info-section">
                     <h3>About</h3>
                     <p id="pokemonDescription"></p>
+                    <button id="ttsButton" class="tts-btn">
+                        🔊 Listen to Pokédex
+                    </button>
                     <div class="stats-grid">
                         <div class="stat">
                             <span class="stat-label">Height</span>
@@ -75,6 +78,11 @@
                     <div class="abilities-list" id="abilities"></div>
                 </div>
             </div>
+        </div>
+
+        <div class="info-section forms-section" id="formsSection" style="display: none; background: white; padding: 40px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 40px;">
+            <h2>Alternative Forms</h2>
+            <div class="evolution-chain" id="alternativeForms" style="margin-top: 20px;"></div>
         </div>
 
         <div class="moves-section">
