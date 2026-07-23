@@ -677,8 +677,26 @@ async function loadRegionalPokedex(region) {
         const pokedexId = regionPokedexMap[region];
         if (!pokedexId) throw new Error("Unknown region");
         
-        const response = await fetch(`${API_URL}/pokedex/${pokedexId}`);
-        const data = await response.json();
+        let data;
+        let cachedPokedex = null;
+        try {
+            if (typeof sessionStorage !== 'undefined') {
+                cachedPokedex = sessionStorage.getItem(`pokedex_${region}`);
+            }
+        } catch (e) {}
+
+        if (cachedPokedex) {
+            data = JSON.parse(cachedPokedex);
+        } else {
+            const response = await fetch(`${API_URL}/pokedex/${pokedexId}`);
+            if (!response.ok) throw new Error("API failed");
+            data = await response.json();
+            try {
+                if (typeof sessionStorage !== 'undefined') {
+                    sessionStorage.setItem(`pokedex_${region}`, JSON.stringify(data));
+                }
+            } catch (e) {}
+        }
         
         let toLoad = [];
         data.pokemon_entries.forEach(entry => {
