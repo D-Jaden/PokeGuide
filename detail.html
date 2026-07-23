@@ -45,7 +45,7 @@
                     <h3>About</h3>
                     <p id="pokemonDescription"></p>
                     <button id="ttsButton" class="tts-btn">
-                        Listen to Pokédex
+                        🔊 Listen to Pokédex
                     </button>
                     <div class="stats-grid">
                         <div class="stat">
@@ -77,6 +77,21 @@
                     <h3>Abilities</h3>
                     <div class="abilities-list" id="abilities"></div>
                 </div>
+
+                <div class="info-section effectiveness-section">
+                    <h3>Type Effectiveness (Offensive)</h3>
+                    <div id="offensiveEffectiveness"></div>
+                </div>
+
+                <div class="info-section effectiveness-section">
+                    <h3>Type Effectiveness (Defensive)</h3>
+                    <div id="defensiveEffectiveness"></div>
+                </div>
+
+                <div class="info-section weather-section" id="weatherTerrainSection" style="display: none;">
+                    <h3>Weather/Terrain Interactions</h3>
+                    <div id="weatherTerrainList" class="weather-list"></div>
+                </div>
             </div>
         </div>
 
@@ -90,6 +105,12 @@
             <div class="moves-grid" id="movesGrid"></div>
         </div>
     </main>
+
+    <footer class="site-footer">
+        <div class="container">
+            <p>&copy; 2026 Pokéguide. This project has no affiliation with Nintendo, Game Freak, or The Pokémon Company. The design was created by Jaden(me), and copying it will lead to legal actions.</p>
+        </div>
+    </footer>
 
     <script src="./script.js"></script>
     <script>
