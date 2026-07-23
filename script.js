@@ -48,6 +48,11 @@ async function loadGeneration(gen) {
     currentGeneration = gen;
     isSearching = false;
     
+    if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.setItem('exploreMode', 'gen');
+        sessionStorage.setItem('exploreValue', gen);
+    }
+    
     let toLoad = [];
     if (gen === 'all') {
         toLoad = allPokemonData.slice(0, 151); // Load Gen 1 for "All" initially to prevent extreme lag
@@ -542,6 +547,22 @@ function initializeLandingScreen() {
     
     if(!btnExploreGen) return;
 
+    const mode = sessionStorage.getItem('exploreMode');
+    const value = sessionStorage.getItem('exploreValue');
+
+    if (mode === 'gen') {
+        landingScreen.style.display = 'none';
+        mainAppContent.style.display = 'block';
+        const title = document.querySelector('.pokemon-title');
+        if (title) title.textContent = 'ALL POKÉMON';
+        const genFilter = document.querySelector('.generation-filter');
+        if (genFilter) genFilter.style.display = 'flex';
+        loadGeneration(value || '1');
+    } else if (mode === 'region') {
+        landingScreen.style.display = 'none';
+        loadRegionalPokedex(value || 'kanto');
+    }
+
     btnExploreGen.addEventListener('click', () => {
         landingScreen.style.display = 'none';
         mainAppContent.style.display = 'block';
@@ -578,6 +599,17 @@ function initializeLandingScreen() {
             loadRegionalPokedex(region);
         });
     });
+    
+    const homeLogo = document.getElementById('homeLogo');
+    if (homeLogo) {
+        homeLogo.addEventListener('click', () => {
+            if (typeof sessionStorage !== 'undefined') {
+                sessionStorage.removeItem('exploreMode');
+                sessionStorage.removeItem('exploreValue');
+            }
+            location.reload();
+        });
+    }
 }
 
 const regionPokedexMap = {
@@ -611,6 +643,11 @@ async function loadRegionalPokedex(region) {
     if (grid) grid.innerHTML = '<div class="loading">Loading Regional Pokédex...</div>';
     
     isSearching = true; // prevents infinite scroll appending wrong gen data
+    
+    if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.setItem('exploreMode', 'region');
+        sessionStorage.setItem('exploreValue', region);
+    }
     
     try {
         const pokedexId = regionPokedexMap[region];
