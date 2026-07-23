@@ -1,6 +1,13 @@
 const API_URL = 'https://pokeapi.co/api/v2';
 let allPokemonData = [];
 let cachedPokemonDetails = {};
+if (typeof sessionStorage !== 'undefined') {
+    try {
+        cachedPokemonDetails = JSON.parse(sessionStorage.getItem('gridCache') || '{}');
+    } catch (e) {
+        cachedPokemonDetails = {};
+    }
+}
 let currentGeneration = 'all';
 let isSearching = false;
 let currentRenderId = 0;
@@ -120,10 +127,26 @@ async function fetchAndRender(pokemonList) {
                             console.error("Failed to fetch species for", data.name);
                         }
                         
-                        return data;
+                        const lightData = {
+                            id: data.id,
+                            name: data.name,
+                            types: data.types,
+                            sprites: { front_default: data.sprites?.front_default || '' },
+                            speciesData: data.speciesData
+                        };
+                        
+                        return lightData;
                     })
                 );
                 details.forEach(d => cachedPokemonDetails[d.id] = d);
+                
+                if (typeof sessionStorage !== 'undefined') {
+                    try {
+                        sessionStorage.setItem('gridCache', JSON.stringify(cachedPokemonDetails));
+                    } catch (e) {
+                        // Ignore quota exceeded
+                    }
+                }
             } catch (err) {
                 console.error("Failed fetching detail chunk", err);
             }
