@@ -13,6 +13,12 @@
 </head>
 
 <body>
+    <div id="copyrightModal" class="copyright-modal-overlay">
+        <div class="copyright-modal-content">
+            <button id="closeCopyrightBtn" class="copyright-modal-close">&times;</button>
+            <p>&copy; 2026 Pokéguide. This project has no affiliation with Nintendo, Game Freak, or The Pokémon Company. The design was created by Jaden(me), and copying it will lead to legal actions.</p>
+        </div>
+    </div>
     <div id="globalLoader" class="global-loader">
         <div class="loader-box">
             <div class="horizontal-loader-area">
@@ -24,6 +30,116 @@
             <div class="loading-text">LOADING...</div>
         </div>
     </div>
+
+
+    <!-- Landing Selection Screen -->
+    <div id="landingScreen" class="landing-screen">
+        <div class="landing-container">
+            <h1 class="landing-title">Welcome to POK<span class="logo-accent">É</span>GUIDE</h1>
+            <p class="landing-subtitle">How would you like to explore?</p>
+            <div class="landing-options">
+                <div class="landing-card" id="btnExploreGen">
+                    <img class="landing-card-img" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png" alt="Pokemons">
+                    <div class="landing-card-text">
+                        <h2>Explore by Generation</h2>
+                        <p>Browse the complete National Pokédex</p>
+                    </div>
+                </div>
+                <div class="landing-card" id="btnExploreRegion">
+                    <img class="landing-card-img" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/4.png" alt="Region Pokemon">
+                    <div class="landing-card-text">
+                        <h2>Explore by Region</h2>
+                        <p>Find Pokémon native to specific regions</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Region Selection Screen -->
+    <div id="regionSelectionScreen" class="landing-screen" style="display: none;">
+        <button id="btnBackFromRegion" class="back-btn">← BACK</button>
+        <div class="landing-container" style="max-width: 1200px;">
+            <h1 class="landing-title" style="margin-bottom: 40px;">Select a Region</h1>
+            <div class="region-grid">
+                <div class="region-card" data-region="kanto">
+                    <h2>Kanto</h2>
+                    <div class="region-starters">
+                        <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/1.png" alt="Bulbasaur">
+                        <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/4.png" alt="Charmander">
+                        <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/7.png" alt="Squirtle">
+                    </div>
+                </div>
+                <div class="region-card" data-region="johto">
+                    <h2>Johto</h2>
+                    <div class="region-starters">
+                        <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/152.png" alt="Chikorita">
+                        <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/155.png" alt="Cyndaquil">
+                        <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/158.png" alt="Totodile">
+                    </div>
+                </div>
+                <div class="region-card" data-region="hoenn">
+                    <h2>Hoenn</h2>
+                    <div class="region-starters">
+                        <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/252.png" alt="Treecko">
+                        <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/255.png" alt="Torchic">
+                        <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/258.png" alt="Mudkip">
+                    </div>
+                </div>
+                <div class="region-card" data-region="sinnoh">
+                    <h2>Sinnoh</h2>
+                    <div class="region-starters">
+                        <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/387.png" alt="Turtwig">
+                        <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/390.png" alt="Chimchar">
+                        <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/393.png" alt="Piplup">
+                    </div>
+                </div>
+                <div class="region-card" data-region="unova">
+                    <h2>Unova</h2>
+                    <div class="region-starters">
+                        <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/495.png" alt="Snivy">
+                        <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/498.png" alt="Tepig">
+                        <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/501.png" alt="Oshawott">
+                    </div>
+                </div>
+                <div class="region-card" data-region="kalos">
+                    <h2>Kalos</h2>
+                    <div class="region-starters">
+                        <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/650.png" alt="Chespin">
+                        <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/653.png" alt="Fennekin">
+                        <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/656.png" alt="Froakie">
+                    </div>
+                </div>
+                <div class="region-card" data-region="alola">
+                    <h2>Alola</h2>
+                    <div class="region-starters">
+                        <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/722.png" alt="Rowlet">
+                        <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/725.png" alt="Litten">
+                        <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/728.png" alt="Popplio">
+                    </div>
+                </div>
+                <div class="region-card" data-region="galar">
+                    <h2>Galar</h2>
+                    <div class="region-starters">
+                        <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/810.png" alt="Grookey">
+                        <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/813.png" alt="Scorbunny">
+                        <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/816.png" alt="Sobble">
+                    </div>
+                </div>
+                <div class="region-card" data-region="paldea">
+                    <h2>Paldea</h2>
+                    <div class="region-starters">
+                        <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/906.png" alt="Sprigatito">
+                        <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/909.png" alt="Fuecoco">
+                        <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/912.png" alt="Quaxly">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App Content -->
+    <div id="mainAppContent" style="display: none;">
     <header class="header">
         <div class="container">
             <h1 class="logo">POKÉGUIDE</h1>
@@ -66,6 +182,13 @@
             </div>
         </div>
     </main>
+
+    <footer class="site-footer">
+        <div class="container">
+            <p>&copy; 2026 Pokéguide. This project has no affiliation with Nintendo, Game Freak, or The Pokémon Company. The design was created by Jaden(me), and copying it will lead to legal actions.</p>
+        </div>
+    </footer>
+    </div>
 
     <script src="./script.js"></script>
 </body>
