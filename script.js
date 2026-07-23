@@ -531,8 +531,9 @@ function displayMoves(moves) {
 }
 
 if (document.getElementById('pokemonGrid')) {
-    simulateLoading(() => {
-        fetchPokemonList();
+    const dataFetchPromise = fetchPokemonList();
+    simulateLoading(async () => {
+        await dataFetchPromise;
         initializeLandingScreen();
     });
 }
