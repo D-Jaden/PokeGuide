@@ -3,6 +3,7 @@ let allPokemonData = [];
 let cachedPokemonDetails = {};
 let currentGeneration = 'all';
 let isSearching = false;
+let currentRenderId = 0;
 
 const generationRanges = {
     1: { start: 1, end: 151 },
@@ -32,7 +33,7 @@ async function fetchPokemonList() {
         });
         
         setupEventListeners();
-        await loadGeneration('1');
+        // Removed await loadGeneration('1') to prevent overwriting region grids
     } catch (error) {
         console.error('Error fetching Pokémon:', error);
         document.getElementById('pokemonGrid').innerHTML = 
@@ -63,6 +64,7 @@ async function fetchAndRender(pokemonList) {
     if (!grid) return;
     
     const chunkSize = 20;
+    const renderId = ++currentRenderId;
     
     grid.innerHTML = '';
     
@@ -72,22 +74,43 @@ async function fetchAndRender(pokemonList) {
     }
 
     for (let i = 0; i < pokemonList.length; i += chunkSize) {
-        // If we switched generation or started searching while loading, abort this render loop
-        if (isSearching && pokemonList.length > 50) return; 
+        if (renderId !== currentRenderId) return;
 
         const chunk = pokemonList.slice(i, i + chunkSize);
         const toFetch = chunk.filter(p => !cachedPokemonDetails[p.id]);
+        
+        const skeletonHtml = Array(chunk.length).fill(`
+            <div class="pokemon-card skeleton-card">
+                <div class="skeleton-img-area"></div>
+                <div class="skeleton-pill-row">
+                    <div class="skeleton-pill"></div>
+                    <div class="skeleton-pill"></div>
+                </div>
+                <div class="skeleton-desc-area"></div>
+            </div>
+        `).join('');
+        
+        const tempSkeletonsContainer = document.createElement('div');
+        tempSkeletonsContainer.className = 'skeleton-container';
+        tempSkeletonsContainer.style.display = 'contents';
+        tempSkeletonsContainer.innerHTML = skeletonHtml;
+        grid.appendChild(tempSkeletonsContainer);
         
         if (toFetch.length > 0) {
             try {
                 const details = await Promise.all(
                     toFetch.map(async (poke) => {
-                        const res = await fetch(poke.url);
-                        const data = await res.json();
+                        const [pokeRes, speciesRes] = await Promise.all([
+                            fetch(poke.url),
+                            fetch(`https://pokeapi.co/api/v2/pokemon-species/${poke.id}`).catch(() => null)
+                        ]);
+                        
+                        const data = await pokeRes.json();
                         
                         try {
-                            const speciesRes = await fetch(data.species.url);
-                            data.speciesData = await speciesRes.json();
+                            if (speciesRes && speciesRes.ok) {
+                                data.speciesData = await speciesRes.json();
+                            }
                         } catch (e) {
                             console.error("Failed to fetch species for", data.name);
                         }
@@ -101,10 +124,14 @@ async function fetchAndRender(pokemonList) {
             }
         }
         
+        if (grid.contains(tempSkeletonsContainer)) {
+            grid.removeChild(tempSkeletonsContainer);
+        }
+        
         const chunkDetails = chunk.map(p => cachedPokemonDetails[p.id]).filter(d => d);
         
         const html = chunkDetails.map(renderSingleCard).join('');
-        grid.innerHTML += html;
+        grid.insertAdjacentHTML('beforeend', html);
     }
 }
 
@@ -183,29 +210,7 @@ function formatPokemonName(name) {
     return `${base} (${formattedForm})`;
 }
 
-function getTypeColor(type) {
-    const colors = {
-        normal: '#A8A878',
-        fire: '#F08030',
-        water: '#6890F0',
-        grass: '#78C850',
-        electric: '#F8D030',
-        ice: '#98D8D8',
-        fighting: '#C03028',
-        poison: '#A040A0',
-        ground: '#E0C068',
-        flying: '#A890F0',
-        psychic: '#F85888',
-        bug: '#A8B820',
-        rock: '#B8A038',
-        ghost: '#705898',
-        dragon: '#7038F8',
-        dark: '#705848',
-        steel: '#B8B8D0',
-        fairy: '#EE99AC'
-    };
-    return colors[type] || '#999999';
-}
+
 
 function getRandomDescription(name) {
     const descriptions = {
@@ -329,6 +334,19 @@ async function loadPokemonDetail(id) {
         const evolutionResponse = await fetch(speciesData.evolution_chain.url);
         const evolutionData = await evolutionResponse.json();
         
+        if (pokemon.moves.length === 0 && speciesData && speciesData.varieties) {
+            const defaultVariety = speciesData.varieties.find(v => v.is_default);
+            if (defaultVariety && defaultVariety.pokemon.name !== pokemon.name) {
+                try {
+                    const defaultRes = await fetch(defaultVariety.pokemon.url);
+                    const defaultPoke = await defaultRes.json();
+                    pokemon.moves = defaultPoke.moves;
+                } catch (e) {
+                    console.error("Failed fetching fallback moves:", e);
+                }
+            }
+        }
+        
         displayPokemonDetail(pokemon, speciesData, evolutionData);
     } catch (error) {
         console.error('Error loading Pokémon detail:', error);
@@ -382,6 +400,7 @@ function displayPokemonDetail(pokemon, speciesData, evolutionData) {
     displayStats(pokemon.stats, pokemon.id > 10000);
     displayAbilities(pokemon.abilities);
     displayMoves(pokemon.moves);
+    fetchAndDisplayEffectiveness(pokemon.types);
     if (speciesData && speciesData.varieties) {
         displayForms(speciesData.varieties, pokemon.name);
     }
@@ -507,7 +526,115 @@ function displayMoves(moves) {
 }
 
 if (document.getElementById('pokemonGrid')) {
-    simulateLoading(fetchPokemonList);
+    simulateLoading(() => {
+        fetchPokemonList();
+        initializeLandingScreen();
+    });
+}
+
+function initializeLandingScreen() {
+    const btnExploreGen = document.getElementById('btnExploreGen');
+    const btnExploreRegion = document.getElementById('btnExploreRegion');
+    const landingScreen = document.getElementById('landingScreen');
+    const regionSelectionScreen = document.getElementById('regionSelectionScreen');
+    const mainAppContent = document.getElementById('mainAppContent');
+    const btnBackFromRegion = document.getElementById('btnBackFromRegion');
+    
+    if(!btnExploreGen) return;
+
+    btnExploreGen.addEventListener('click', () => {
+        landingScreen.style.display = 'none';
+        mainAppContent.style.display = 'block';
+        
+        const title = document.querySelector('.pokemon-title');
+        if (title) title.textContent = 'ALL POKÉMON';
+        
+        const genFilter = document.querySelector('.generation-filter');
+        if (genFilter) genFilter.style.display = 'flex';
+        
+        if (!currentGeneration) {
+            loadGeneration('1');
+        } else if (isSearching) {
+            loadGeneration(currentGeneration);
+        }
+    });
+    
+    btnExploreRegion.addEventListener('click', () => {
+        landingScreen.style.display = 'none';
+        regionSelectionScreen.style.display = 'flex';
+    });
+    
+    if (btnBackFromRegion) {
+        btnBackFromRegion.addEventListener('click', () => {
+            regionSelectionScreen.style.display = 'none';
+            landingScreen.style.display = 'flex';
+        });
+    }
+    
+    const regionCards = document.querySelectorAll('.region-card');
+    regionCards.forEach(card => {
+        card.addEventListener('click', () => {
+            const region = card.getAttribute('data-region');
+            loadRegionalPokedex(region);
+        });
+    });
+}
+
+const regionPokedexMap = {
+    'kanto': 2,
+    'johto': 3,
+    'hoenn': 4,
+    'sinnoh': 5,
+    'unova': 8,
+    'kalos': 12,
+    'alola': 16,
+    'galar': 27,
+    'paldea': 31
+};
+
+async function loadRegionalPokedex(region) {
+    const regionSelectionScreen = document.getElementById('regionSelectionScreen');
+    const mainAppContent = document.getElementById('mainAppContent');
+    
+    regionSelectionScreen.style.display = 'none';
+    mainAppContent.style.display = 'block';
+    
+    const title = document.querySelector('.pokemon-title');
+    if (title) title.textContent = `${region.toUpperCase()} REGIONAL POKÉDEX`;
+    
+    document.querySelectorAll('.gen-btn').forEach(btn => btn.classList.remove('active'));
+    
+    const genFilter = document.querySelector('.generation-filter');
+    if (genFilter) genFilter.style.display = 'none';
+    
+    const grid = document.getElementById('pokemonGrid');
+    if (grid) grid.innerHTML = '<div class="loading">Loading Regional Pokédex...</div>';
+    
+    isSearching = true; // prevents infinite scroll appending wrong gen data
+    
+    try {
+        const pokedexId = regionPokedexMap[region];
+        if (!pokedexId) throw new Error("Unknown region");
+        
+        const response = await fetch(`${API_URL}/pokedex/${pokedexId}`);
+        const data = await response.json();
+        
+        let toLoad = [];
+        data.pokemon_entries.forEach(entry => {
+            const speciesName = entry.pokemon_species.name;
+            const poke = allPokemonData.find(p => p.name === speciesName || p.name.startsWith(speciesName + '-'));
+            if (poke) {
+                if(!toLoad.find(p => p.name === poke.name)) {
+                    toLoad.push(poke);
+                }
+            }
+        });
+        
+        await fetchAndRender(toLoad);
+    } catch (error) {
+        console.error("Error loading regional pokedex", error);
+        if (grid) grid.innerHTML = '<div class="error">Failed to load region data.</div>';
+    }
 }
 
 function simulateLoading(callback) {
@@ -545,7 +672,10 @@ function simulateLoading(callback) {
             loaderProgress.style.width = `100%`;
             setTimeout(() => {
                 globalLoader.classList.add('hidden');
-                setTimeout(() => globalLoader.style.display = 'none', 500);
+                setTimeout(() => {
+                    globalLoader.style.display = 'none';
+                    window.dispatchEvent(new Event('loaderFinished'));
+                }, 500);
             }, 400);
         });
     }
@@ -619,3 +749,195 @@ function setupTTS(pokemonName, genus, description, preEvoName) {
         }
     });
 }
+
+const weatherTerrainMap = {
+    fire: [
+        { name: 'Harsh Sunlight', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>', effect: 'Boosts Fire-type moves by 50%.' },
+        { name: 'Rain', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="#3B82F6" stroke-width="2"><path d="M16 13v8M8 13v8M12 15v8M20 16.58A5 5 0 0 0 18 7h-1.26A8 8 0 1 0 4 15.25"/></svg>', effect: 'Weakens Fire-type moves by 50%.' }
+    ],
+    water: [
+        { name: 'Rain', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="#3B82F6" stroke-width="2"><path d="M16 13v8M8 13v8M12 15v8M20 16.58A5 5 0 0 0 18 7h-1.26A8 8 0 1 0 4 15.25"/></svg>', effect: 'Boosts Water-type moves by 50%.' },
+        { name: 'Harsh Sunlight', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>', effect: 'Weakens Water-type moves by 50%.' }
+    ],
+    electric: [
+        { name: 'Electric Terrain', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="#FBBF24" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>', effect: 'Boosts Electric-type moves by 30% and prevents Sleep.' }
+    ],
+    grass: [
+        { name: 'Grassy Terrain', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2"><path d="M12 20v-8m0 0l4-4m-4 4l-4-4m8 8c0 1.1-.9 2-2 2H8c-1.1 0-2-.9-2-2v-4c0-1.1.9-2 2-2h8c1.1 0 2 .9 2 2v4z"/></svg>', effect: 'Boosts Grass-type moves by 30% and heals HP each turn.' }
+    ],
+    psychic: [
+        { name: 'Psychic Terrain', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="#EC4899" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4m0-4h.01"/></svg>', effect: 'Boosts Psychic-type moves by 30% and blocks priority moves.' }
+    ],
+    dragon: [
+        { name: 'Misty Terrain', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="#A78BFA" stroke-width="2"><path d="M17.5 19c2.485 0 4.5-2.015 4.5-4.5S19.985 10 17.5 10c-1.393 0-2.637.636-3.465 1.632A5 5 0 0 0 6 13a4.5 4.5 0 0 0 .5 8.973M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41m11.32-11.32l1.41-1.41"/></svg>', effect: 'Weakens Dragon-type moves by 50% and prevents status conditions.' }
+    ],
+    ice: [
+        { name: 'Snow/Hail', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="#93C5FD" stroke-width="2"><path d="M12 3v18M3 12h18M5.636 5.636l12.728 12.728M18.364 5.636L5.636 18.364M8 12h8"/></svg>', effect: 'Boosts Defense of Ice-types by 50% (Snow) and prevents Hail damage.' }
+    ],
+    rock: [
+        { name: 'Sandstorm', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2"><path d="M12 2v20m-7-3h14M5 7h14m-3 7h3m-8-4h8M4 14h4"/></svg>', effect: 'Boosts Sp. Def of Rock-types by 50% and prevents Sandstorm damage.' }
+    ],
+    ground: [
+        { name: 'Sandstorm', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2"><path d="M12 2v20m-7-3h14M5 7h14m-3 7h3m-8-4h8M4 14h4"/></svg>', effect: 'Immune to Sandstorm damage.' }
+    ],
+    steel: [
+        { name: 'Sandstorm', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2"><path d="M12 2v20m-7-3h14M5 7h14m-3 7h3m-8-4h8M4 14h4"/></svg>', effect: 'Immune to Sandstorm damage.' }
+    ]
+};
+
+async function fetchAndDisplayEffectiveness(pokemonTypes) {
+    try {
+        const typePromises = pokemonTypes.map(t => fetch(t.type.url).then(res => res.json()));
+        const typesData = await Promise.all(typePromises);
+        
+        calculateAndRenderDefensive(typesData);
+        calculateAndRenderOffensive(typesData);
+        renderWeatherTerrain(pokemonTypes.map(t => t.type.name));
+    } catch (e) {
+        console.error("Error fetching type effectiveness data", e);
+    }
+}
+
+function calculateAndRenderDefensive(typesData) {
+    let multipliers = {};
+    const allTypes = ['normal','fire','water','electric','grass','ice','fighting','poison','ground','flying','psychic','bug','rock','ghost','dragon','dark','steel','fairy'];
+    
+    allTypes.forEach(t => multipliers[t] = 1);
+    
+    typesData.forEach(typeData => {
+        typeData.damage_relations.double_damage_from.forEach(t => multipliers[t.name] *= 2);
+        typeData.damage_relations.half_damage_from.forEach(t => multipliers[t.name] *= 0.5);
+        typeData.damage_relations.no_damage_from.forEach(t => multipliers[t.name] *= 0);
+    });
+    
+    const weak4x = [], weak2x = [], resist05x = [], resist025x = [], immune0x = [];
+    Object.entries(multipliers).forEach(([type, mult]) => {
+        if (mult === 4) weak4x.push(type);
+        else if (mult === 2) weak2x.push(type);
+        else if (mult === 0.5) resist05x.push(type);
+        else if (mult === 0.25) resist025x.push(type);
+        else if (mult === 0) immune0x.push(type);
+    });
+    
+    let html = '';
+    
+    if (weak4x.length || weak2x.length) {
+        html += '<div class="effectiveness-group"><div class="effectiveness-title"><span class="multiplier-badge multiplier-2x">Weak To</span></div><div class="type-list">';
+        weak4x.forEach(t => html += `<span class="type-badge type-${t}">${t} (4x)</span>`);
+        weak2x.forEach(t => html += `<span class="type-badge type-${t}">${t}</span>`);
+        html += '</div></div>';
+    }
+    
+    if (resist05x.length || resist025x.length) {
+        html += '<div class="effectiveness-group"><div class="effectiveness-title"><span class="multiplier-badge multiplier-05x">Resistant To</span></div><div class="type-list">';
+        resist025x.forEach(t => html += `<span class="type-badge type-${t}">${t} (0.25x)</span>`);
+        resist05x.forEach(t => html += `<span class="type-badge type-${t}">${t}</span>`);
+        html += '</div></div>';
+    }
+    
+    if (immune0x.length) {
+        html += '<div class="effectiveness-group"><div class="effectiveness-title"><span class="multiplier-badge multiplier-0x">Immune To</span></div><div class="type-list">';
+        immune0x.forEach(t => html += `<span class="type-badge type-${t}">${t}</span>`);
+        html += '</div></div>';
+    }
+    
+    if (!html) html = '<div class="effectiveness-none">No special defensive interactions.</div>';
+    
+    const container = document.getElementById('defensiveEffectiveness');
+    if(container) container.innerHTML = html;
+}
+
+function calculateAndRenderOffensive(typesData) {
+    let superEffective = new Set();
+    let notVeryEffective = new Set();
+    let noEffect = new Set();
+    
+    typesData.forEach(typeData => {
+        typeData.damage_relations.double_damage_to.forEach(t => superEffective.add(t.name));
+        typeData.damage_relations.half_damage_to.forEach(t => notVeryEffective.add(t.name));
+        typeData.damage_relations.no_damage_to.forEach(t => noEffect.add(t.name));
+    });
+    
+    let html = '';
+    
+    if (superEffective.size > 0) {
+        html += '<div class="effectiveness-group"><div class="effectiveness-title"><span class="multiplier-badge multiplier-2x">Super Effective Against</span></div><div class="type-list">';
+        Array.from(superEffective).forEach(t => html += `<span class="type-badge type-${t}">${t}</span>`);
+        html += '</div></div>';
+    }
+    
+    if (notVeryEffective.size > 0) {
+        html += '<div class="effectiveness-group"><div class="effectiveness-title"><span class="multiplier-badge multiplier-05x">Not Very Effective Against</span></div><div class="type-list">';
+        Array.from(notVeryEffective).forEach(t => html += `<span class="type-badge type-${t}">${t}</span>`);
+        html += '</div></div>';
+    }
+    
+    if (noEffect.size > 0) {
+        html += '<div class="effectiveness-group"><div class="effectiveness-title"><span class="multiplier-badge multiplier-0x">No Effect Against</span></div><div class="type-list">';
+        Array.from(noEffect).forEach(t => html += `<span class="type-badge type-${t}">${t}</span>`);
+        html += '</div></div>';
+    }
+    
+    if (!html) html = '<div class="effectiveness-none">No special offensive interactions.</div>';
+    
+    const container = document.getElementById('offensiveEffectiveness');
+    if(container) container.innerHTML = html;
+}
+
+function renderWeatherTerrain(typeNames) {
+    const section = document.getElementById('weatherTerrainSection');
+    const list = document.getElementById('weatherTerrainList');
+    
+    if (!section || !list) return;
+    
+    let matchedEffects = [];
+    
+    typeNames.forEach(t => {
+        if (weatherTerrainMap[t]) {
+            matchedEffects = matchedEffects.concat(weatherTerrainMap[t]);
+        }
+    });
+    
+    if (matchedEffects.length === 0) {
+        section.style.display = 'none';
+        return;
+    }
+    
+    let uniqueEffects = [];
+    let seenEffects = new Set();
+    matchedEffects.forEach(e => {
+        if (!seenEffects.has(e.effect)) {
+            uniqueEffects.push(e);
+            seenEffects.add(e.effect);
+        }
+    });
+    
+    section.style.display = 'block';
+    
+    list.innerHTML = uniqueEffects.map(effect => `
+        <div class="weather-card">
+            <div class="weather-icon-wrapper">
+                ${effect.icon}
+            </div>
+            <div class="weather-info">
+                <h4>${effect.name}</h4>
+                <p>${effect.effect}</p>
+            </div>
+        </div>
+    `).join('');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const modal = document.getElementById('copyrightModal');
+    const closeBtn = document.getElementById('closeCopyrightBtn');
+    
+    if (modal && closeBtn) {
+        window.addEventListener('loaderFinished', () => {
+            modal.classList.add('active');
+        });
+        
+        closeBtn.addEventListener('click', () => {
+            modal.classList.remove('active');
+        });
+    }
+});
