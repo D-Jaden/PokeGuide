@@ -132,7 +132,8 @@ async function fetchAndRender(pokemonList) {
                             name: data.name,
                             types: data.types,
                             sprites: { front_default: data.sprites?.front_default || '' },
-                            speciesData: data.speciesData
+                            speciesData: data.speciesData,
+                            stats: data.stats
                         };
                         
                         return lightData;
@@ -175,7 +176,7 @@ function renderSingleCard(pokemon) {
         description = getRandomDescription(pokemon.name);
     }
     
-    const hp = pokemon.stats[0].base_stat;
+    const hp = pokemon.stats && pokemon.stats[0] ? pokemon.stats[0].base_stat : '???';
     const gen = getGenFromId(pokemon.id);
     
     return `
